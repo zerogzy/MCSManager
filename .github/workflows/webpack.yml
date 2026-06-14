@@ -30,6 +30,9 @@ jobs:
           ./install-dependents.sh
           ./build.sh
 
+      - name: Add binaries to production files
+        run: wget --input-file=lib-urls.txt --directory-prefix=production-code/daemon/lib/
+
       - name: Upload production artifact
         uses: actions/upload-artifact@v4
         with:
