@@ -53,6 +53,15 @@ export default class SystemConfig {
   // Quick installation address
   presetPackAddr = "https://script.mcsmanager.com/market-v2.json";
 
+  // 面板自动更新使用的 Release API 地址
+  updateReleaseApiUrl = "https://api.github.com/repos/zerogzy/MCSManager/releases/latest";
+
+  // 替换更新文件后执行的服务重启命令
+  updateServiceRestartCommand = "systemctl restart mcsm-web mcsm-daemon";
+
+  // 是否允许自动更新到预发布版本
+  updateAllowPrerelease = false;
+
   // Redis address (Experimental Features)
   redisUrl = "";
 

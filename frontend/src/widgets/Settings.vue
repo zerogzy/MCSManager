@@ -3,6 +3,7 @@ import { getProPanelUrl } from "@/components/IframeBox/config";
 import IframeBox from "@/components/IframeBox/index.vue";
 import LeftMenusPanel from "@/components/LeftMenusPanel.vue";
 import Loading from "@/components/Loading.vue";
+import SystemUpdate from "./settings/SystemUpdate.vue";
 import { useUploadFileDialog } from "@/components/fc";
 import { router } from "@/config/router";
 import { SUPPORTED_LANGS, isCN, t } from "@/lang/i18n";
@@ -20,6 +21,7 @@ import {
   BugOutlined,
   EditOutlined,
   GithubOutlined,
+  CloudDownloadOutlined,
   LockOutlined,
   PayCircleOutlined,
   MessageOutlined,
@@ -134,6 +136,11 @@ const menus = arrayFilter([
     title: t("TXT_CODE_SHOP_PAYMENT_SETTINGS"),
     key: "payment",
     icon: PayCircleOutlined
+  },
+  {
+    title: "系统更新",
+    key: "update",
+    icon: CloudDownloadOutlined
   },
   {
     title: t("TXT_CODE_46cb40d5"),
@@ -1177,6 +1184,19 @@ onUnmounted(() => {
 
           <template #pro>
             <IframeBox :src="getProPanelUrl('/status')" :height="card.height" />
+          </template>
+
+          <template #update>
+            <div class="content-box" :style="{ maxHeight: card.height }">
+              <a-typography-title :level="4" class="mb-24">系统更新</a-typography-title>
+              <div style="text-align: left">
+                <SystemUpdate
+                  :form-data="formData"
+                  :submit-loading="submitIsLoading"
+                  :submit-settings="submit"
+                />
+              </div>
+            </div>
           </template>
 
           <template #payment>

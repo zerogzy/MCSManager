@@ -86,6 +86,9 @@ export interface Settings {
   canFileManager: boolean;
   language: string;
   presetPackAddr: string;
+  updateReleaseApiUrl: string;
+  updateServiceRestartCommand: string;
+  updateAllowPrerelease: boolean;
   redisUrl: string;
   allowUsePreset: boolean;
   businessMode: boolean;

@@ -134,6 +134,22 @@ export const setSettingInfo = useDefineApi<
   method: "PUT"
 });
 
+export const checkPanelUpdate = useDefineApi<any, any>({
+  url: "/api/update/check",
+  method: "POST"
+});
+
+export const startPanelUpdate = useDefineApi<any, any>({
+  url: "/api/update/start",
+  method: "POST"
+});
+
+export const getPanelUpdateStatus = useDefineApi<any, any>({
+  url: "/api/update/status",
+  method: "GET",
+  forceRequest: true
+});
+
 export const getUserInfo = useDefineApi<
   {
     params: {
