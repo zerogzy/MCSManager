@@ -108,6 +108,30 @@ router.post(
   }
 );
 
+router.post(
+  "/docker_using",
+  permission({ level: ROLE.ADMIN }),
+  validator({
+    query: {
+      daemonId: String,
+      instanceId: String
+    },
+    body: {
+      image: String
+    }
+  }),
+  async (ctx) => {
+    const daemonId = String(ctx.query.daemonId);
+    const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
+
+    const response = await new RemoteRequest(remoteService).request("java_manager/docker_using", {
+      instanceId: ctx.query.instanceId,
+      image: ctx.request.body.image
+    });
+    ctx.body = response;
+  }
+);
+
 router.delete(
   "/delete",
   permission({ level: ROLE.ADMIN }),

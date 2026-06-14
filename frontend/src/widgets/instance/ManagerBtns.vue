@@ -34,6 +34,7 @@ import EventConfig from "./dialogs/EventConfig.vue";
 import InstanceDetail from "./dialogs/InstanceDetail.vue";
 import InstanceFundamentalDetail from "./dialogs/InstanceFundamentalDetail.vue";
 import JavaManager from "./dialogs/JavaManager.vue";
+import DockerJavaImageManager from "./dialogs/DockerJavaImageManager.vue";
 import McPingSettings from "./dialogs/McPingSettings.vue";
 import PingConfig from "./dialogs/PingConfig.vue";
 import RconSettings from "./dialogs/RconSettings.vue";
@@ -43,6 +44,7 @@ const terminalConfigDialog = ref<InstanceType<typeof TermConfig>>();
 const rconSettingsDialog = ref<InstanceType<typeof RconSettings>>();
 const mcSettingsDialog = ref<InstanceType<typeof McPingSettings>>();
 const javaManagerDialog = ref<InstanceType<typeof JavaManager>>();
+const dockerJavaImageManagerDialog = ref<InstanceType<typeof DockerJavaImageManager>>();
 const eventConfigDialog = ref<InstanceType<typeof EventConfig>>();
 const pingConfigDialog = ref<InstanceType<typeof PingConfig>>();
 const instanceDetailsDialog = ref<InstanceType<typeof InstanceDetail>>();
@@ -173,12 +175,18 @@ const btns = computed(() => {
       title: t("TXT_CODE_3fee13ed"),
       icon: BuildOutlined,
       click: () => {
-        javaManagerDialog.value?.openDialog();
+        if (instanceInfo.value?.config.processType === "docker") {
+          dockerJavaImageManagerDialog.value?.openDialog();
+        } else {
+          javaManagerDialog.value?.openDialog();
+        }
       },
-      condition: () =>
-        (instanceInfo.value?.config.type.includes(TYPE_MINECRAFT_JAVA) &&
-          instanceInfo.value?.config.processType === "general") ??
-        false
+      condition: () => {
+        const config = instanceInfo.value?.config;
+        if (!config?.type.includes(TYPE_MINECRAFT_JAVA)) return false;
+        if (config.processType === "general") return true;
+        return config.processType === "docker" && isAdmin.value;
+      }
     },
     {
       title: t("TXT_CODE_656a85d8"),
@@ -344,6 +352,13 @@ watch(instanceInfo, (cfg, oldCfg) => {
     :daemon-id="daemonId"
     :instance-id="instanceId"
     @update="refreshInstanceInfo"
+  />
+
+  <DockerJavaImageManager
+    ref="dockerJavaImageManagerDialog"
+    :instance-info="instanceInfo"
+    :daemon-id="daemonId"
+    :instance-id="instanceId"
   />
 </template>
 

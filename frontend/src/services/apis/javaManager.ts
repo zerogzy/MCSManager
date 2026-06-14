@@ -63,6 +63,22 @@ export const usingJava = useDefineApi<
   method: "POST"
 });
 
+export const usingDockerJavaImage = useDefineApi<
+  {
+    params: {
+      daemonId: string;
+      instanceId: string;
+    };
+    data: {
+      image: string;
+    };
+  },
+  Boolean
+>({
+  url: "/api/java_manager/docker_using",
+  method: "POST"
+});
+
 export const deleteJava = useDefineApi<
   {
     params: {

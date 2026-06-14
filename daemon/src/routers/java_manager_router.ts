@@ -5,6 +5,7 @@ import { URL } from "url";
 import { commandStringToArray } from "../entity/commands/base/command_parser";
 import { JavaInfo } from "../entity/commands/java/java_manager";
 import { $t } from "../i18n";
+import { DockerManager } from "../service/docker_service";
 import downloadManager from "../service/download_manager";
 import javaManager from "../service/java_manager";
 import logger from "../service/log";
@@ -100,6 +101,32 @@ routerApp.on("java_manager/using", async (ctx, data) => {
         id: data.id
       },
       startCommand: startCommandList.join(" ")
+    });
+
+    protocol.response(ctx, true);
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
+  }
+});
+
+routerApp.on("java_manager/docker_using", async (ctx, data) => {
+  try {
+    const image = String(data.image || "").trim();
+    if (!image) throw new Error("Docker Java 镜像不能为空");
+
+    const instance = instanceManager.getInstance(data.instanceId);
+    if (!instance) throw new Error($t("TXT_CODE_ef6b54fb"));
+    if (!instance.config.type.includes("minecraft/java")) throw new Error("仅 Minecraft Java 实例支持切换 Java 镜像");
+    if (instance.config.processType !== "docker") throw new Error("仅 Docker 模式实例支持切换 Java 镜像");
+
+    const dockerManager = new DockerManager();
+    const exists = await dockerManager.hasJavaImageTag(image);
+    if (!exists) throw new Error("只能选择当前系统已有的 Java Docker 镜像");
+
+    instance.parameters({
+      docker: {
+        image
+      }
     });
 
     protocol.response(ctx, true);

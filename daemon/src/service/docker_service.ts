@@ -5,6 +5,24 @@ import { normalizeDockerPlatform } from "mcsmanager-common";
 import { Readable } from "node:stream";
 import os from "os";
 
+const JAVA_IMAGE_KEYWORDS = [
+  "java",
+  "jdk",
+  "jre",
+  "openjdk",
+  "temurin",
+  "corretto",
+  "zulu",
+  "liberica",
+  "semeru",
+  "graalvm",
+  "sapmachine",
+  "dragonwell",
+  "kona"
+];
+
+const NON_RUNTIME_IMAGE_KEYWORDS = ["minecraft", "paper", "spigot", "forge", "fabric", "server"];
+
 function resolveDockerOptionsFromEnv(): Docker.DockerOptions {
   const dockerHost = process.env.DOCKER_HOST?.trim();
   if (dockerHost) {
@@ -92,6 +110,44 @@ export class DockerManager {
 
   public getDocker() {
     return this.docker;
+  }
+
+  public static getImageRepoTags(image: any) {
+    return (image?.RepoTags || []).filter((tag: string) => tag && tag !== "<none>:<none>");
+  }
+
+  public static isJavaImage(image: any) {
+    const tags = DockerManager.getImageRepoTags(image);
+    if (!tags.length) return false;
+
+    const labels = image?.Labels || {};
+    const labelText = Object.entries(labels)
+      .map(([key, value]) => `${key}=${value}`)
+      .join(" ");
+    const digestText = (image?.RepoDigests || []).join(" ");
+    const text = [...tags, digestText, labelText].join(" ").toLowerCase();
+
+    const hasJavaKeyword = JAVA_IMAGE_KEYWORDS.some((keyword) => text.includes(keyword));
+    if (!hasJavaKeyword) return false;
+
+    const hasKnownRuntimeKeyword = JAVA_IMAGE_KEYWORDS
+      .filter((keyword) => keyword !== "java")
+      .some((keyword) => text.includes(keyword));
+    const looksLikeGameServerImage = NON_RUNTIME_IMAGE_KEYWORDS.some((keyword) =>
+      text.includes(keyword)
+    );
+
+    return hasKnownRuntimeKeyword || !looksLikeGameServerImage;
+  }
+
+  public async listJavaImages() {
+    const images = await this.docker.listImages();
+    return images.filter((image: any) => DockerManager.isJavaImage(image));
+  }
+
+  public async hasJavaImageTag(imageName: string) {
+    const images = await this.listJavaImages();
+    return images.some((image: any) => DockerManager.getImageRepoTags(image).includes(imageName));
   }
 
   public static setBuilderProgress(imageName: string, status: number) {

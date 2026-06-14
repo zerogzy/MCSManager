@@ -19,6 +19,18 @@ export const imageList = useDefineApi<
   url: "/api/environment/image"
 });
 
+export const javaImageList = useDefineApi<
+  {
+    params: {
+      daemonId: string;
+    };
+  },
+  ImageInfo[]
+>({
+  url: "/api/environment/java_images",
+  method: "GET"
+});
+
 export const getNetworkModeList = useDefineApi<
   {
     params: {

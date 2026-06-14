@@ -28,6 +28,24 @@ router.get(
 );
 
 // [Top-level Permission]
+// Get local Java runtime image list
+router.get(
+  "/java_images",
+  permission({ level: ROLE.ADMIN }),
+  validator({ query: { daemonId: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
+      const result = await new RemoteRequest(remoteService).request("environment/java_images", {});
+      ctx.body = result;
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// [Top-level Permission]
 // create image
 router.post(
   "/image",

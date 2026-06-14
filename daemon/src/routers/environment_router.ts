@@ -18,6 +18,16 @@ routerApp.on("environment/images", async (ctx, data) => {
   }
 });
 
+// Get local Java runtime image list
+routerApp.on("environment/java_images", async (ctx) => {
+  try {
+    const result = await new DockerManager().listJavaImages();
+    protocol.response(ctx, result);
+  } catch (error: any) {
+    protocol.responseError(ctx, $t("TXT_CODE_environment_router.dockerInfoErr"));
+  }
+});
+
 // Get the list of containers in this system
 routerApp.on("environment/containers", async (ctx, data) => {
   try {
