@@ -1,6 +1,7 @@
 name: Build MCSManager
 
 on:
+  workflow_dispatch:
   push:
     branches: ["master"]
   pull_request:
@@ -23,9 +24,15 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Run Build Script
-        run: | 
+        run: |
           chmod a+x ./install-dependents.sh
           chmod a+x ./build.sh
           ./install-dependents.sh
           ./build.sh
-        
+
+      - name: Upload production artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcsmanager-production-node-${{ matrix.node-version }}
+          path: production-code/
+          if-no-files-found: error
