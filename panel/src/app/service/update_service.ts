@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ChildProcessWithoutNullStreams, execFile, spawn } from "child_process";
+import { ChildProcessWithoutNullStreams, spawn } from "child_process";
 import * as fs from "fs-extra";
 import { GlobalVariable } from "mcsmanager-common";
 import path from "path";
@@ -7,9 +7,18 @@ import { v4 } from "uuid";
 import { systemConfig } from "../setting";
 import { downloadUpdatePackage } from "./update_download";
 import { logger } from "./log";
+import RemoteRequest from "./remote_command";
+import RemoteServiceSubsystem from "./remote_service";
+import {
+  findBlockingUpdateInstances,
+  getUpdateAssetName,
+  getUpdateRestartCommand,
+  UpdateInstanceSnapshot
+} from "./update_helpers";
+import { buildWindowsApplyScript, getWindowsApplyCommand } from "./update_windows";
+import { backupCurrent, extractPackage, replaceProgram, validatePackage } from "./update_files";
 
 const DEFAULT_RELEASE_API = "https://api.github.com/repos/zerogzy/MCSManager/releases/latest";
-const LINUX_FULL_ASSET = "mcsmanager_linux_release.tar.gz";
 const UPDATE_DIR = ".update";
 
 type UpdateStatus =
@@ -86,7 +95,7 @@ class PanelUpdateService {
   }
 
   async checkUpdate() {
-    this.ensureLinux();
+    this.ensureSupportedPlatform();
     this.setTask(this.createBaseTask("checking", "正在检查最新版本"));
     try {
       const result = await this.fetchRelease();
@@ -108,7 +117,7 @@ class PanelUpdateService {
   }
 
   async startUpdate() {
-    this.ensureLinux();
+    this.ensureSupportedPlatform();
     if (this.running) throw new Error("已有更新任务正在运行，请等待当前任务结束");
     this.running = true;
     this.task = this.createBaseTask("checking", "正在准备更新任务");
@@ -124,6 +133,7 @@ class PanelUpdateService {
     let extractDir = "";
     try {
       const release = await this.fetchRelease();
+      await this.ensureSafeToRestartDaemon();
       this.task.latestVersion = release.latestVersion;
       this.task.assetName = release.assetName;
       this.task.releaseUrl = release.releaseUrl;
@@ -139,17 +149,25 @@ class PanelUpdateService {
       await this.download(release.downloadUrl, packagePath, release.assetSize || 0);
       this.updateStatus("downloaded", 45, "更新包下载完成");
 
-      await this.extractPackage(packagePath, extractDir);
+      this.updateStatus("extracting", 50, "正在解压更新包");
+      await extractPackage(packagePath, extractDir);
       this.updateStatus("extracted", 65, "更新包解压完成");
 
       const sourceRoot = path.join(extractDir, "mcsmanager");
-      await this.validatePackage(sourceRoot);
-      const backupPath = await this.backupCurrent(rootDir);
+      await validatePackage(sourceRoot);
+      this.updateStatus("backing_up", 70, "正在备份当前版本");
+      const backupPath = await backupCurrent(rootDir, this.task.currentVersion);
       this.task.backupPath = backupPath;
       this.updateStatus("backed_up", 78, "当前版本备份完成");
 
-      await this.replaceProgram(rootDir, sourceRoot, backupPath);
-      this.updateStatus("replaced", 90, "程序文件替换完成");
+      if (process.platform === "win32") {
+        await this.writeWindowsApplyScript(rootDir, sourceRoot, backupPath);
+        this.updateStatus("replaced", 90, "更新脚本已准备完成");
+      } else {
+        this.updateStatus("replacing", 80, "正在替换程序文件");
+        await replaceProgram(rootDir, sourceRoot, backupPath);
+        this.updateStatus("replaced", 90, "程序文件替换完成");
+      }
 
       await this.restartServices();
       this.updateStatus("completed", 100, "更新完成，重启命令已执行");
@@ -168,14 +186,12 @@ class PanelUpdateService {
       timeout: 30000,
       headers: { "User-Agent": "MCSManager-Update" }
     });
-    if (data.prerelease && !systemConfig?.updateAllowPrerelease) {
-      throw new Error("最新版本是预发布版本，当前设置不允许自动更新预发布版本");
-    }
     const latestVersion = this.normalizeVersion(data.tag_name || data.name || "");
     if (!latestVersion) throw new Error("Release 信息中缺少版本号");
 
-    const asset = data.assets?.find((item) => item.name === LINUX_FULL_ASSET);
-    if (!asset?.browser_download_url) throw new Error(`未找到适用于 Linux 的完整更新包：${LINUX_FULL_ASSET}`);
+    const assetName = getUpdateAssetName();
+    const asset = data.assets?.find((item) => item.name === assetName);
+    if (!asset?.browser_download_url) throw new Error(`未找到适用于当前系统的完整更新包：${assetName}`);
     this.validateUrl(asset.browser_download_url, "更新包下载地址");
 
     const currentVersion = this.normalizeVersion(String(GlobalVariable.get("version", "Unknown")));
@@ -208,65 +224,40 @@ class PanelUpdateService {
     });
   }
 
-  private async extractPackage(packagePath: string, extractDir: string) {
-    this.updateStatus("extracting", 50, "正在解压更新包");
-    await fs.remove(extractDir);
-    await fs.ensureDir(extractDir);
-    const entries = await this.execFileText("tar", ["-tzf", packagePath]);
-    for (const entry of entries.split("\n").filter(Boolean)) {
-      if (path.isAbsolute(entry) || entry.includes("..") || !entry.startsWith("mcsmanager/")) {
-        throw new Error(`更新包包含非法路径：${entry}`);
-      }
-    }
-    await this.execFileText("tar", ["-xzf", packagePath, "-C", extractDir]);
-  }
-
-  private async validatePackage(sourceRoot: string) {
-    const web = path.join(sourceRoot, "web", "app.js");
-    const daemon = path.join(sourceRoot, "daemon", "app.js");
-    if (!(await fs.pathExists(web))) throw new Error("更新包缺少 web/app.js");
-    if (!(await fs.pathExists(daemon))) throw new Error("更新包缺少 daemon/app.js");
-  }
-
-  private async backupCurrent(rootDir: string) {
-    this.updateStatus("backing_up", 70, "正在备份当前版本");
-    const backupPath = path.join(rootDir, UPDATE_DIR, "backups", `${Date.now()}-${this.task.currentVersion}`);
-    await fs.ensureDir(backupPath);
-    await fs.copy(path.join(rootDir, "web"), path.join(backupPath, "web"));
-    await fs.copy(path.join(rootDir, "daemon"), path.join(backupPath, "daemon"));
-    return backupPath;
-  }
-
-  private async replaceProgram(rootDir: string, sourceRoot: string, backupPath: string) {
-    this.updateStatus("replacing", 80, "正在替换程序文件");
-    try {
-      await fs.remove(path.join(rootDir, "web"));
-      await fs.copy(path.join(sourceRoot, "web"), path.join(rootDir, "web"));
-      await this.restoreRuntimeData(backupPath, rootDir, "web");
-      await fs.remove(path.join(rootDir, "daemon"));
-      await fs.copy(path.join(sourceRoot, "daemon"), path.join(rootDir, "daemon"));
-      await this.restoreRuntimeData(backupPath, rootDir, "daemon");
-    } catch (error) {
-      await fs.remove(path.join(rootDir, "web")).catch(() => {});
-      await fs.remove(path.join(rootDir, "daemon")).catch(() => {});
-      await fs.copy(path.join(backupPath, "web"), path.join(rootDir, "web")).catch(() => {});
-      await fs.copy(path.join(backupPath, "daemon"), path.join(rootDir, "daemon")).catch(() => {});
-      throw error;
-    }
-  }
-
-  private async restoreRuntimeData(backupPath: string, rootDir: string, name: "web" | "daemon") {
-    const dataDir = path.join(backupPath, name, "data");
-    if (await fs.pathExists(dataDir)) {
-      await fs.copy(dataDir, path.join(rootDir, name, "data"));
-    }
+  private async writeWindowsApplyScript(rootDir: string, sourceRoot: string, backupPath: string) {
+    const scriptPath = path.join(rootDir, UPDATE_DIR, "apply-update.ps1");
+    await fs.outputFile(scriptPath, buildWindowsApplyScript(rootDir, sourceRoot, backupPath), "utf-8");
   }
 
   private async restartServices() {
-    const command = systemConfig?.updateServiceRestartCommand?.trim();
-    if (!command) throw new Error("未配置服务重启命令");
-    this.updateStatus("restarting", 95, "正在执行服务重启命令");
-    await this.execShell(command);
+    this.updateStatus("restarting", 95, "正在重启 MCSManager 服务");
+    if (process.platform === "win32") {
+      await this.execShell(getWindowsApplyCommand(this.getRootDir()));
+      return;
+    }
+    await this.execShell(getUpdateRestartCommand());
+  }
+
+  private async ensureSafeToRestartDaemon() {
+    const remoteService = Array.from(RemoteServiceSubsystem.services.values()).find((service) => {
+      return service.available && ["localhost", "127.0.0.1", "::1"].includes(service.config.ip);
+    });
+    if (!remoteService) {
+      this.log("warn", "未连接本机 Daemon，跳过运行实例预检查");
+      return;
+    }
+
+    await new RemoteRequest(remoteService).request("info/setting", {
+      enableSoftShutdown: true,
+      softShutdownSkipDocker: true
+    });
+    const instances = await new RemoteRequest(remoteService).request<UpdateInstanceSnapshot[]>(
+      "instance/overview"
+    );
+    const blockingInstances = findBlockingUpdateInstances(instances || []);
+    if (blockingInstances.length === 0) return;
+    const names = blockingInstances.map((item) => `${item.nickname}(${item.instanceUuid})`);
+    throw new Error(`存在运行中的普通进程实例，请停止后再更新：${names.join(", ")}`);
   }
 
   private execShell(command: string) {
@@ -279,15 +270,6 @@ class PanelUpdateService {
         reject(new Error(stderr || `重启命令执行失败，退出码：${code}`));
       });
       child.on("error", reject);
-    });
-  }
-
-  private execFileText(command: string, args: string[]) {
-    return new Promise<string>((resolve, reject) => {
-      execFile(command, args, { maxBuffer: 1024 * 1024 * 20 }, (error, stdout, stderr) => {
-        if (error) return reject(new Error(stderr || error.message));
-        resolve(stdout);
-      });
     });
   }
 
@@ -320,11 +302,12 @@ class PanelUpdateService {
   }
 
   private fail(error: any) {
+    const message = error?.message || String(error);
     this.task.status = "failed";
-    this.task.error = error?.message || String(error);
-    this.task.message = this.task.error;
+    this.task.error = message;
+    this.task.message = message;
     this.task.finishedAt = Date.now();
-    this.log("error", this.task.error);
+    this.log("error", message);
     this.running = false;
   }
 
@@ -334,10 +317,14 @@ class PanelUpdateService {
   }
 
   private getReleaseApiUrl() {
-    return systemConfig?.updateReleaseApiUrl || DEFAULT_RELEASE_API;
+    return this.resolveProxyUrl(DEFAULT_RELEASE_API);
   }
 
   private resolveDownloadUrl(downloadUrl: string) {
+    return this.resolveProxyUrl(downloadUrl);
+  }
+
+  private resolveProxyUrl(downloadUrl: string) {
     const proxyUrl = systemConfig?.updateDownloadProxyUrl?.trim();
     if (!proxyUrl) return downloadUrl;
     const url = new URL(downloadUrl);
@@ -352,7 +339,7 @@ class PanelUpdateService {
       return proxyUrl.split("{url}").join(downloadUrl);
     }
     const normalizedProxy = proxyUrl.endsWith("/") ? proxyUrl : `${proxyUrl}/`;
-    return `${normalizedProxy}${urlNoProtocol}`;
+    return `${normalizedProxy}${downloadUrl}`;
   }
 
   private getRootDir() {
@@ -378,8 +365,9 @@ class PanelUpdateService {
     }
   }
 
-  private ensureLinux() {
-    if (process.platform !== "linux") throw new Error("第一版自动更新仅支持 Linux 环境");
+  private ensureSupportedPlatform() {
+    getUpdateAssetName();
+    getUpdateRestartCommand();
   }
 }
 

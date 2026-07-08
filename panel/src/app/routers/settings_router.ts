@@ -69,17 +69,6 @@ router.put("/setting", permission({ level: ROLE.ADMIN }), async (ctx) => {
       systemConfig.presetPackAddr = String(config.presetPackAddr);
     }
 
-    if (config.updateReleaseApiUrl != null) {
-      const updateReleaseApiUrl = String(config.updateReleaseApiUrl).trim();
-      if (
-        updateReleaseApiUrl &&
-        !updateReleaseApiUrl.startsWith("https://") &&
-        !updateReleaseApiUrl.startsWith("http://")
-      ) {
-        throw new Error("Release API URL must use http(s) protocol");
-      }
-      systemConfig.updateReleaseApiUrl = updateReleaseApiUrl;
-    }
     if (config.updateDownloadProxyUrl != null) {
       const updateDownloadProxyUrl = String(config.updateDownloadProxyUrl).trim();
       if (
@@ -91,13 +80,6 @@ router.put("/setting", permission({ level: ROLE.ADMIN }), async (ctx) => {
       }
       systemConfig.updateDownloadProxyUrl = updateDownloadProxyUrl;
     }
-    if (config.updateServiceRestartCommand != null) {
-      systemConfig.updateServiceRestartCommand = String(config.updateServiceRestartCommand);
-    }
-    if (config.updateAllowPrerelease != null) {
-      systemConfig.updateAllowPrerelease = Boolean(config.updateAllowPrerelease);
-    }
-
     if (config.language != null) {
       logger.warn($t("TXT_CODE_e29a9317"), config.language);
       systemConfig.language = String(config.language);

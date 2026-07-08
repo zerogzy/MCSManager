@@ -19,6 +19,11 @@ const updateInfo = ref<any>();
 const updateStatus = ref<any>();
 let timer: ReturnType<typeof setInterval> | undefined;
 
+const GITHUB_PROXY_OPTIONS = [
+  { value: "https://v4.gh-proxy.org" },
+  { value: "https://ghproxy.vip" }
+];
+
 const STATUS_LABELS: Record<string, string> = {
   idle: "暂无更新任务",
   checking: "正在检查更新...",
@@ -97,7 +102,7 @@ const startUpdate = async () => {
   Modal.confirm({
     title: "确认开始自动更新？",
     content:
-      "系统将下载完整 Release 包，备份并替换 web/daemon 程序文件，然后执行配置的 systemd 重启命令。请确认当前环境由 systemd 管理。",
+      "系统将下载完整 Release 包，备份并替换 web/daemon 程序文件，然后自动重启 MCSManager 服务。运行中的普通进程实例会阻止更新，Docker 实例会在后端重启后重新接管。",
     okType: "danger",
     async onOk() {
       try {
@@ -122,42 +127,18 @@ onUnmounted(stopPolling);
 
 <template>
   <a-form :model="formData" layout="vertical">
-    <!-- 更新源配置 -->
     <a-form-item>
-      <a-typography-title :level="5">Release API 地址</a-typography-title>
+      <a-typography-title :level="5">GitHub 加速镜像地址</a-typography-title>
       <a-typography-paragraph type="secondary">
-        用于检查最新版本，默认使用 GitHub Releases latest API。可填写兼容的镜像站地址以解决网络问题。
+        可选。使用加速镜像加速访问 GitHub，内置 2 个可选加速镜像：
+        <code>https://v4.gh-proxy.org</code> 和 <code>https://ghproxy.vip</code>。
       </a-typography-paragraph>
-      <a-input v-model:value="formData.updateReleaseApiUrl" style="max-width: 640px" />
-    </a-form-item>
-
-    <a-form-item>
-      <a-typography-title :level="5">更新包下载代理前缀</a-typography-title>
-      <a-typography-paragraph type="secondary">
-        可选。填写后会把 Release 资产下载地址改写到该镜像前缀，避免检查更新走镜像但实际下载仍直连 GitHub。
-        例如：<code>https://web.zerogzy.net/web/</code> 会下载 <code>https://web.zerogzy.net/web/https/github.com/...</code>。
-      </a-typography-paragraph>
-      <a-input
+      <a-auto-complete
         v-model:value="formData.updateDownloadProxyUrl"
-        placeholder="留空则直接使用 Release API 返回的下载地址"
+        :options="GITHUB_PROXY_OPTIONS"
+        placeholder="留空则直连 GitHub 下载"
         style="max-width: 640px"
       />
-    </a-form-item>
-
-    <a-form-item>
-      <a-typography-title :level="5">服务重启命令</a-typography-title>
-      <a-typography-paragraph type="secondary">
-        更新替换完成后执行的命令。默认适用于 systemd 部署方式。
-      </a-typography-paragraph>
-      <a-input v-model:value="formData.updateServiceRestartCommand" style="max-width: 640px" />
-    </a-form-item>
-
-    <a-form-item>
-      <a-typography-title :level="5">允许预发布版本</a-typography-title>
-      <a-typography-paragraph type="secondary">
-        关闭时，若最新 Release 为 prerelease 则不会被用于自动更新。
-      </a-typography-paragraph>
-      <a-switch v-model:checked="formData.updateAllowPrerelease" />
     </a-form-item>
 
     <div class="button mb-24">

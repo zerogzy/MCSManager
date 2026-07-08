@@ -53,16 +53,16 @@ export default class SystemConfig {
   // Quick installation address
   presetPackAddr = "https://script.mcsmanager.com/market-v2.json";
 
-  // 面板自动更新使用的 Release API 地址
+  // Legacy only. The update checker now always uses the built-in GitHub latest API.
   updateReleaseApiUrl = "https://api.github.com/repos/zerogzy/MCSManager/releases/latest";
 
-  // 更新包下载代理前缀，用于将 Release asset 下载地址改写到镜像站
+  // GitHub download proxy prefix, for example: https://v4.gh-proxy.org/https://github.com/...
   updateDownloadProxyUrl = "";
 
-  // 替换更新文件后执行的服务重启命令
+  // Legacy only. Update restart commands are built in.
   updateServiceRestartCommand = "systemctl restart mcsm-web mcsm-daemon";
 
-  // 是否允许自动更新到预发布版本
+  // Legacy only. Prerelease releases are no longer exposed as a user setting.
   updateAllowPrerelease = false;
 
   // Redis address (Experimental Features)
