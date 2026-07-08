@@ -19,18 +19,18 @@ export async function validatePackage(sourceRoot: string) {
 export async function backupCurrent(rootDir: string, currentVersion: string) {
   const backupPath = path.join(rootDir, ".update", "backups", `${Date.now()}-${currentVersion}`);
   await fs.ensureDir(backupPath);
-  await fs.copy(path.join(rootDir, "web"), path.join(backupPath, "web"));
-  await fs.copy(path.join(rootDir, "daemon"), path.join(backupPath, "daemon"));
+  await copyProgramDir(path.join(rootDir, "web"), path.join(backupPath, "web"));
+  await copyProgramDir(path.join(rootDir, "daemon"), path.join(backupPath, "daemon"));
   return backupPath;
 }
 
 export async function replaceProgram(rootDir: string, sourceRoot: string, backupPath: string) {
   try {
     await fs.remove(path.join(rootDir, "web"));
-    await fs.copy(path.join(sourceRoot, "web"), path.join(rootDir, "web"));
+    await copyProgramDir(path.join(sourceRoot, "web"), path.join(rootDir, "web"));
     await restoreRuntimeData(backupPath, rootDir, "web");
     await fs.remove(path.join(rootDir, "daemon"));
-    await fs.copy(path.join(sourceRoot, "daemon"), path.join(rootDir, "daemon"));
+    await copyProgramDir(path.join(sourceRoot, "daemon"), path.join(rootDir, "daemon"));
     await restoreRuntimeData(backupPath, rootDir, "daemon");
   } catch (error) {
     await fs.remove(path.join(rootDir, "web")).catch(() => {});
@@ -44,6 +44,18 @@ export async function replaceProgram(rootDir: string, sourceRoot: string, backup
 async function restoreRuntimeData(backupPath: string, rootDir: string, name: "web" | "daemon") {
   const dataDir = path.join(backupPath, name, "data");
   if (await fs.pathExists(dataDir)) await fs.copy(dataDir, path.join(rootDir, name, "data"));
+}
+
+async function copyProgramDir(source: string, target: string) {
+  const stat = await fs.lstat(source);
+  if (stat.isSymbolicLink()) return;
+  if (!stat.isDirectory()) return fs.copyFile(source, target);
+
+  await fs.ensureDir(target);
+  const entries = await fs.readdir(source);
+  for (const entry of entries) {
+    await copyProgramDir(path.join(source, entry), path.join(target, entry));
+  }
 }
 
 async function extractTarGz(packagePath: string, extractDir: string) {
