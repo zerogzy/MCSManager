@@ -24,56 +24,40 @@ export async function validatePackage(sourceRoot: string, parts: ProgramPart[] =
   }
 }
 
-export async function backupCurrent(
-  rootDir: string,
-  currentVersion: string,
-  parts: ProgramPart[] = ALL_PARTS
-) {
-  const backupPath = path.join(rootDir, ".update", "backups", `${Date.now()}-${currentVersion}`);
-  await fs.ensureDir(backupPath);
-  for (const part of parts) {
-    const source = path.join(rootDir, part);
-    if (await fs.pathExists(source)) await copyProgramDir(source, path.join(backupPath, part));
-  }
-  return backupPath;
-}
-
 export async function replaceProgram(
   rootDir: string,
   sourceRoot: string,
-  backupPath: string,
   parts: ProgramPart[] = ALL_PARTS
 ) {
-  try {
-    for (const part of parts) {
-      await fs.remove(path.join(rootDir, part));
-      await copyProgramDir(path.join(sourceRoot, part), path.join(rootDir, part));
-      await restoreRuntimeData(backupPath, rootDir, part);
-    }
-  } catch (error) {
-    for (const part of parts) {
-      await fs.remove(path.join(rootDir, part)).catch(() => {});
-      await fs.copy(path.join(backupPath, part), path.join(rootDir, part)).catch(() => {});
-    }
-    throw error;
+  for (const part of parts) {
+    await removeProgramFiles(rootDir, part);
+    await copyProgramDir(path.join(sourceRoot, part), path.join(rootDir, part));
   }
 }
 
-async function restoreRuntimeData(backupPath: string, rootDir: string, name: ProgramPart) {
-  const dataDir = path.join(backupPath, name, "data");
-  if (await fs.pathExists(dataDir)) await fs.copy(dataDir, path.join(rootDir, name, "data"));
-  if (name !== "web") return;
-
-  const uploads = path.join(backupPath, "web", "public", "upload_files");
-  if (await fs.pathExists(uploads)) {
-    await fs.copy(uploads, path.join(rootDir, "web", "public", "upload_files"));
+async function removeProgramFiles(rootDir: string, part: ProgramPart) {
+  const partDir = path.join(rootDir, part);
+  if (!(await fs.pathExists(partDir))) return;
+  for (const entry of await fs.readdir(partDir)) {
+    if (entry === "data") continue;
+    if (part === "web" && entry === "public") {
+      const publicDir = path.join(partDir, "public");
+      for (const publicEntry of await fs.readdir(publicDir).catch(() => [])) {
+        if (publicEntry !== "upload_files") await fs.remove(path.join(publicDir, publicEntry));
+      }
+      continue;
+    }
+    await fs.remove(path.join(partDir, entry));
   }
 }
 
 async function copyProgramDir(source: string, target: string) {
   const stat = await fs.lstat(source);
   if (stat.isSymbolicLink()) return;
-  if (!stat.isDirectory()) return fs.copyFile(source, target);
+  if (!stat.isDirectory()) {
+    await fs.ensureDir(path.dirname(target));
+    return fs.copyFile(source, target);
+  }
 
   await fs.ensureDir(target);
   const entries = await fs.readdir(source);

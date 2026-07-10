@@ -6,7 +6,7 @@ import { logger } from "./log";
 import RemoteRequest, { RemoteRequestTimeoutError } from "./remote_command";
 import RemoteServiceSubsystem from "./remote_service";
 import { downloadUpdatePackage } from "./update_download";
-import { backupCurrent, extractPackage, validatePackage } from "./update_files";
+import { extractPackage, validatePackage } from "./update_files";
 import type { UpdateTargetType } from "./update_helpers";
 import { fetchUpdateRelease } from "./update_release";
 import type {
@@ -183,16 +183,11 @@ class PanelUpdateService {
 
       const sourceRoot = path.join(extractDir, "mcsmanager");
       await validatePackage(sourceRoot, ["web"]);
-      this.updateStatus(key, "backing_up", 70, "正在备份当前 Web 面板");
-      const backupPath = await backupCurrent(rootDir, task.currentVersion, ["web"]);
-      task.backupPath = backupPath;
-      this.updateStatus(key, "backed_up", 78, "当前 Web 面板备份完成");
       this.updateStatus(key, "replacing", 82, "正在启动 Web 面板替换任务");
       await launchReplacementHelper({
         rootDir,
         taskDir,
         sourceRoot,
-        backupPath,
         parts: ["web"],
         serviceName: "mcsm-web",
         unitName: `mcsm-web-update-${task.taskId}`,

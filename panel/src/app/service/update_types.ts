@@ -8,8 +8,6 @@ export type UpdateStatus =
   | "downloaded"
   | "extracting"
   | "extracted"
-  | "backing_up"
-  | "backed_up"
   | "replacing"
   | "replaced"
   | "restarting"
@@ -59,7 +57,6 @@ export type UpdateTaskSnapshot = {
   totalBytes?: number;
   message: string;
   logs: Array<{ time: number; level: UpdateLogLevel; message: string }>;
-  backupPath?: string;
   error?: string;
   startedAt?: number;
   finishedAt?: number;

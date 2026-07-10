@@ -8,7 +8,6 @@ export type ReplacementHelperOptions = {
   rootDir: string;
   taskDir: string;
   sourceRoot: string;
-  backupPath: string;
   statusFile: string;
   task: any;
   parts: ReplacementPart[];
@@ -102,29 +101,25 @@ async function removeDir(dir) {
   await fsp.rm(dir, { recursive: true, force: true });
 }
 
-async function restoreRuntimeData(part) {
-  const dataDir = path.join(cfg.backupPath, part, "data");
-  if (await exists(dataDir)) await copyProgramDir(dataDir, path.join(cfg.rootDir, part, "data"));
-  if (part !== "web") return;
-  const uploads = path.join(cfg.backupPath, "web", "public", "upload_files");
-  if (await exists(uploads)) {
-    await copyProgramDir(uploads, path.join(cfg.rootDir, "web", "public", "upload_files"));
+async function removeProgramFiles(part) {
+  const partDir = path.join(cfg.rootDir, part);
+  if (!(await exists(partDir))) return;
+  for (const entry of await fsp.readdir(partDir)) {
+    if (entry === "data") continue;
+    if (part === "web" && entry === "public") {
+      const publicDir = path.join(partDir, "public");
+      for (const publicEntry of await fsp.readdir(publicDir).catch(() => [])) {
+        if (publicEntry !== "upload_files") await removeDir(path.join(publicDir, publicEntry));
+      }
+      continue;
+    }
+    await removeDir(path.join(partDir, entry));
   }
 }
 
 async function replacePart(part) {
-  await removeDir(path.join(cfg.rootDir, part));
+  await removeProgramFiles(part);
   await copyProgramDir(path.join(cfg.sourceRoot, part), path.join(cfg.rootDir, part));
-  await restoreRuntimeData(part);
-}
-
-async function rollback() {
-  for (const part of cfg.parts) {
-    const backup = path.join(cfg.backupPath, part);
-    if (!(await exists(backup))) continue;
-    await removeDir(path.join(cfg.rootDir, part));
-    await copyProgramDir(backup, path.join(cfg.rootDir, part));
-  }
 }
 
 async function readStatus() {
@@ -166,10 +161,7 @@ function serviceCommand(action) {
     await execShell(serviceCommand("Start"));
     await writeStatus("completed", 100, "更新完成");
   } catch (error) {
-    try {
-      await rollback();
-      await execShell(serviceCommand("Start")).catch(() => {});
-    } catch {}
+    await execShell(serviceCommand("Start")).catch(() => {});
     await writeStatus("failed", 100, error.message || String(error), "error", error.message || String(error));
     process.exit(1);
   }

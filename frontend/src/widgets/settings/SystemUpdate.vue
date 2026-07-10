@@ -61,8 +61,6 @@ const STATUS_LABELS: Record<string, string> = {
   downloaded: "下载完成",
   extracting: "正在解压更新包...",
   extracted: "解压完成",
-  backing_up: "正在备份当前版本...",
-  backed_up: "备份完成",
   replacing: "正在替换程序文件...",
   replaced: "替换完成",
   restarting: "正在重启服务...",
@@ -195,8 +193,8 @@ const startUpdate = async (target: any) => {
     title: `确认更新 ${target.name}？`,
     content:
       target.targetType === "web"
-        ? "将下载 Web 更新包，备份并替换 Web 程序文件，然后自动重启 Web 服务。"
-        : "将通过 Web 面板通知该 Daemon 下载更新包，备份并替换 Daemon 程序文件，然后自动重启 Daemon 服务。Docker 实例会在重启后重新接管。",
+        ? "将下载 Web 更新包并替换 Web 程序文件，然后自动重启 Web 服务。"
+        : "将通过 Web 面板通知该 Daemon 下载更新包并替换 Daemon 程序文件，然后自动重启 Daemon 服务。Docker 实例会在重启后重新接管。",
     okType: "danger",
     async onOk() {
       setStartLoading(target.key, true);
@@ -332,10 +330,6 @@ onUnmounted(() => {
 
       <a-alert v-if="status.error" type="error" :message="status.error" show-icon class="mt-12" />
 
-      <p v-if="status.backupPath" class="backup-path">
-        备份目录：<code>{{ status.backupPath }}</code>
-      </p>
-
       <div v-if="status.logs?.length" class="update-logs mt-12">
         <a-typography-text type="secondary" style="font-size: 12px">操作日志</a-typography-text>
         <div class="log-list">
@@ -363,8 +357,7 @@ onUnmounted(() => {
 .target-name { font-weight: 600; }
 
 .target-meta,
-.status-message,
-.backup-path {
+.status-message {
   color: #8c8c8c;
 }
 

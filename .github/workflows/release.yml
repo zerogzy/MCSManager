@@ -8,7 +8,7 @@ on:
       tag:
         description: Release tag
         required: true
-        default: v10.16.8
+        default: v10.16.9
 
 permissions:
   contents: write

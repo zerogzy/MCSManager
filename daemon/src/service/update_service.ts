@@ -6,7 +6,7 @@ import { globalConfiguration } from "../entity/config";
 import logger from "./log";
 import InstanceSubsystem from "./system_instance";
 import { downloadUpdatePackage } from "./update_download";
-import { backupCurrent, extractPackage, validatePackage } from "./update_files";
+import { extractPackage, validatePackage } from "./update_files";
 import { findBlockingUpdateInstances, getUpdateAssetName } from "./update_helpers";
 
 type UpdateStatus =
@@ -16,8 +16,6 @@ type UpdateStatus =
   | "downloaded"
   | "extracting"
   | "extracted"
-  | "backing_up"
-  | "backed_up"
   | "replacing"
   | "replaced"
   | "restarting"
@@ -46,7 +44,6 @@ export type UpdateTaskSnapshot = {
   totalBytes?: number;
   message: string;
   logs: Array<{ time: number; level: UpdateLogLevel; message: string }>;
-  backupPath?: string;
   error?: string;
   startedAt?: number;
   finishedAt?: number;
@@ -103,13 +100,8 @@ class DaemonUpdateService {
 
       const sourceRoot = path.join(extractDir, "mcsmanager");
       await validatePackage(sourceRoot, ["daemon"]);
-      this.updateStatus("backing_up", 70, "正在备份当前 daemon");
-      const backupPath = await backupCurrent(rootDir, this.task.currentVersion, ["daemon"]);
-      this.task.backupPath = backupPath;
-      this.updateStatus("backed_up", 78, "当前 daemon 备份完成");
-
       this.updateStatus("replacing", 82, "正在启动 daemon 替换任务");
-      await this.launchHelper(rootDir, taskDir, sourceRoot, backupPath);
+      await this.launchHelper(rootDir, taskDir, sourceRoot);
       this.updateStatus("restarting", 90, "daemon 替换任务已启动");
     } catch (error: any) {
       this.fail(error);
@@ -122,14 +114,12 @@ class DaemonUpdateService {
   private async launchHelper(
     rootDir: string,
     taskDir: string,
-    sourceRoot: string,
-    backupPath: string
+    sourceRoot: string
   ) {
     await launchReplacementHelper({
       rootDir,
       taskDir,
       sourceRoot,
-      backupPath,
       parts: ["daemon"],
       serviceName: "mcsm-daemon",
       unitName: `mcsm-daemon-update-${this.task.taskId}`,

@@ -2,7 +2,7 @@ import assert from "assert";
 import * as fs from "fs-extra";
 import os from "os";
 import path from "path";
-import { backupCurrent, replaceProgram } from "./update_files";
+import { replaceProgram } from "./update_files";
 import {
   getUpdateAssetName,
   getUpdateRestartCommand,
@@ -45,24 +45,6 @@ assert.deepStrictEqual(
   [{ instanceUuid: "general-1", nickname: "vanilla", processType: "general", status: 3 }]
 );
 
-async function assertBackupSkipsBrokenLinks() {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "mcsm-update-"));
-  try {
-    await fs.ensureDir(path.join(root, "web", "node_modules"));
-    await fs.ensureDir(path.join(root, "daemon"));
-    await fs.outputFile(path.join(root, "web", "app.js"), "");
-    await fs.outputFile(path.join(root, "daemon", "app.js"), "");
-    await fs.symlink(path.join(root, "missing-common"), path.join(root, "web", "node_modules", "mcsmanager-common"), "junction");
-
-    const backupPath = await backupCurrent(root, "10.16.7");
-
-    assert.ok(await fs.pathExists(path.join(backupPath, "web", "app.js")));
-    assert.strictEqual(await fs.pathExists(path.join(backupPath, "web", "node_modules", "mcsmanager-common")), false);
-  } finally {
-    await fs.remove(root);
-  }
-}
-
 async function assertReplaceSkipsBrokenLinks() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "mcsm-replace-root-"));
   const source = await fs.mkdtemp(path.join(os.tmpdir(), "mcsm-replace-source-"));
@@ -79,8 +61,7 @@ async function assertReplaceSkipsBrokenLinks() {
     await fs.outputFile(path.join(source, "daemon", "app.js"), "new");
     await fs.symlink(path.join(source, "missing-common"), path.join(source, "web", "node_modules", "mcsmanager-common"), "junction");
 
-    const backupPath = await backupCurrent(root, "10.16.7");
-    await replaceProgram(root, source, backupPath);
+    await replaceProgram(root, source);
 
     assert.strictEqual(await fs.readFile(path.join(root, "web", "app.js"), "utf-8"), "new");
     assert.ok(await fs.pathExists(path.join(root, "web", "data", "config.json")));
@@ -101,8 +82,7 @@ async function assertWebOnlyReplacePreservesUploads() {
     await fs.outputFile(path.join(source, "web", "app.js"), "new");
     await fs.outputFile(path.join(source, "web", "public", "index.html"), "index");
 
-    const backupPath = await backupCurrent(root, "10.16.7", ["web"]);
-    await replaceProgram(root, source, backupPath, ["web"]);
+    await replaceProgram(root, source, ["web"]);
 
     assert.strictEqual(await fs.readFile(path.join(root, "web", "app.js"), "utf-8"), "new");
     assert.strictEqual(
@@ -117,7 +97,6 @@ async function assertWebOnlyReplacePreservesUploads() {
 }
 
 Promise.all([
-  assertBackupSkipsBrokenLinks(),
   assertReplaceSkipsBrokenLinks(),
   assertWebOnlyReplacePreservesUploads()
 ]).then(() => {

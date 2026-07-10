@@ -2,7 +2,7 @@ import assert from "assert";
 import * as fs from "fs-extra";
 import os from "os";
 import path from "path";
-import { backupCurrent, replaceProgram, validatePackage } from "./update_files";
+import { replaceProgram, validatePackage } from "./update_files";
 import { findBlockingUpdateInstances, getUpdateAssetName } from "./update_helpers";
 
 assert.strictEqual(getUpdateAssetName("daemon", "linux"), "mcsmanager_linux_daemon_only_release.tar.gz");
@@ -25,8 +25,7 @@ async function assertDaemonOnlyPackageAndReplace() {
     await fs.outputFile(path.join(source, "daemon", "app.js"), "new");
 
     await validatePackage(source, ["daemon"]);
-    const backupPath = await backupCurrent(root, "4.16.2", ["daemon"]);
-    await replaceProgram(root, source, backupPath, ["daemon"]);
+    await replaceProgram(root, source, ["daemon"]);
 
     assert.strictEqual(await fs.readFile(path.join(root, "daemon", "app.js"), "utf-8"), "new");
     assert.ok(await fs.pathExists(path.join(root, "daemon", "data", "global.json")));
