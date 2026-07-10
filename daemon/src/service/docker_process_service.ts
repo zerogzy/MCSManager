@@ -549,6 +549,7 @@ export class DockerProcessAdapter extends EventEmitter implements IInstanceProce
   pid?: number | string;
 
   private stream?: NodeJS.ReadWriteStream;
+  private detached = false;
   public container?: Docker.Container;
 
   constructor(public readonly containerWrapper: SetupDockerContainer) {
@@ -558,6 +559,7 @@ export class DockerProcessAdapter extends EventEmitter implements IInstanceProce
   // Once the program is actually started, no errors can block the next startup process
   public async start(param: IDockerProcessAdapterStartParam, container?: Docker.Container) {
     try {
+      this.detached = false;
       if (container) {
         this.container = container;
       } else {
@@ -597,12 +599,14 @@ export class DockerProcessAdapter extends EventEmitter implements IInstanceProce
   }
 
   public detach() {
+    this.detached = true;
     this.stream?.write("\x10\x11");
     this.stream?.removeAllListeners();
     this.stream = undefined;
   }
 
   public async destroy() {
+    if (this.detached) return;
     try {
       await this.container?.remove();
     } catch (error: any) {}
