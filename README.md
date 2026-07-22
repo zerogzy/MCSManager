@@ -203,9 +203,11 @@ services:
     ports:
       - "23333:23333"
     volumes:
+      - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - <CHANGE_ME_TO_INSTALL_PATH>/web/data:/opt/mcsmanager/web/data
       - <CHANGE_ME_TO_INSTALL_PATH>/web/logs:/opt/mcsmanager/web/logs
+      - <CHANGE_ME_TO_INSTALL_PATH>/web/public/upload_files:/opt/mcsmanager/web/public/upload_files
 
   daemon:
     image: githubyumao/mcsmanager-daemon:latest
@@ -225,11 +227,11 @@ services:
 Note (Rootless Docker on Linux): the daemon supports `DOCKER_HOST`. If your Docker daemon runs in rootless mode, the socket is usually at `/run/user/<uid>/docker.sock` instead of `/var/run/docker.sock`. In that case, replace the default socket mount with the rootless socket and set `DOCKER_HOST`, for example:
 
 ```yml
-  daemon:
-    environment:
-      - DOCKER_HOST=unix:///run/user/1000/docker.sock
-    volumes:
-      - /run/user/1000/docker.sock:/run/user/1000/docker.sock
+daemon:
+  environment:
+    - DOCKER_HOST=unix:///run/user/1000/docker.sock
+  volumes:
+    - /run/user/1000/docker.sock:/run/user/1000/docker.sock
 ```
 
 Replace `1000` with your actual UID (`id -u`).
@@ -271,7 +273,7 @@ Once resolved, we will credit the discoverer in the relevant code or release not
 
 Thanks to the following developers for making important contributions to the security testing of MCSManager!
 
-> [@Cuo256](https://github.com/Cuo256), [@xiaosu](https://github.com/xiaosuawa), [@tianjiefeifei](https://github.com/tianjiefeifei)
+> [@Cuo256](https://github.com/Cuo256), [@xiaosu](https://github.com/xiaosuawa), [@tianjiefeifei](https://github.com/tianjiefeifei), [9Bakabaka](https://github.com/9Bakabaka)
 
 <br />
 
@@ -323,7 +325,6 @@ MCSManager supports all major modern browsers, including:
 **Internet Explorer (IE)** is no longer supported.
 
 <br />
-
 
 ## Contributors
 
