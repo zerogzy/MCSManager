@@ -71,6 +71,9 @@ export default class SystemConfig {
   // Whether to allow users to edit the start & update command of Docker instances
   allowChangeCmd = false;
 
+  // Whether API key authentication is enabled for the panel.
+  enableApiKey = false;
+
   // -----
   // After it is enabled, you can connect to the redeem.mcsmanager.com platform
   // to sell instances based on redeem
