@@ -11,7 +11,14 @@ vi.mock("../system_instance", () => ({
   }
 }));
 vi.mock("../../utils/url", () => ({
-  checkSafeUrl: async (url: string) => new URL(url).hostname === "127.0.0.1"
+  checkSafeUrl: async (url: string) => new URL(url).hostname === "127.0.0.1",
+  // DownloadManager validates and pins the address through resolveSafeUrl(). The real
+  // implementation rejects IP literals and private ranges, so allow only the local test server.
+  resolveSafeUrl: async (url: string) => {
+    const urlObj = new URL(url);
+    if (urlObj.hostname !== "127.0.0.1") throw new Error("Unexpected host in test");
+    return { url: urlObj, address: "127.0.0.1", family: 4 };
+  }
 }));
 
 import downloadManager from "../download_manager";
