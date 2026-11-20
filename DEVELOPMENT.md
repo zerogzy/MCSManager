@@ -1,60 +1,60 @@
-## Setting Up Development Environment
+## 搭建开发环境
 
-This section is **for developers**. If you want to develop MCSManager or contribute code, please read this content carefully:
+此段落**面向开发人员**，如果你想对 MCSManager 进行开发，或者提交代码贡献，请务必仔细的阅读这些内容：
 
-### Required Environment
+### 所需环境
 
 - Node.js v16+
 
-We use `Visual Studio Code` to develop MCSManager, we **highly recommend** these plugins:
+我们使用 `Visual Studio Code` 开发 MCSManager，我们**极力推荐**这些插件：
 
-- i18n Text Display Support (I18n Ally)
-- Code Formatting (Prettier)
-- Vue - Official
+- i18n 文案显示支持（I18n Ally）
+- 代码格式化（Prettier）
+- Vue - Offcial
 - ESLint
 
 <br />
 
-### Getting Started
+### 开始搭建
 
-#### 1. Download the Source Code
+#### 1. 下载源代码
 
 ```bash
 git clone https://github.com/MCSManager/MCSManager.git
 cd MCSManager
 ```
 
-#### 2. Download Binary Dependency Files
+#### 2. 下载二进制依赖文件
 
-You need to visit the [PTY](https://github.com/MCSManager/PTY/releases) and [Zip-Tools](https://github.com/MCSManager/Zip-Tools/releases) projects to download binary files compatible with your system, and place them in the `daemon/lib` directory (create it manually if it doesn't exist) to ensure the proper functioning of the `simulated terminal` and `file decompression`.
+你需要前往 [PTY](https://github.com/MCSManager/PTY/releases) 和 [Zip-Tools](https://github.com/MCSManager/Zip-Tools/releases) 两个项目下载适用于你的系统的二进制文件，将他们存放到 `daemon/lib` 目录下（不存在就手动创建），以确保 `仿真终端` 和 `文件解压缩` 的正常工作。
 
-Download three dependency files, selecting them based on your system architecture. Check the Releases to find binary files suitable for your system and architecture.
+下载三个依赖文件，需要根据自己的系统架构来选择，查看 Releases 可以找到适合自己系统和架构的二进制文件。
 
-For example:
+例如:
 
 ```bash
-# Manually create binary dependency library folder
+# 手动新建二进制依赖库文件夹
 mkdir lib && cd lib
 
-# Simulated terminal dependency library
+# 仿真终端依赖库
 wget https://github.com/MCSManager/PTY/releases/download/latest/pty_linux_x64
-# wget https://github.com/MCSManager/PTY/releases/download/latest/pty_darwin_arm64 # MacOS Arm architecture
+# wget https://github.com/MCSManager/PTY/releases/download/latest/pty_darwin_arm64 # MacOS Arm 架构
 
-# Decompression & compression file dependency library
+# 解压 & 压缩文件依赖库
 wget https://github.com/MCSManager/Zip-Tools/releases/download/latest/file_zip_linux_x64
 
-# 7z archive support (optional)
+# 7z 压缩包支持（可选）
 wget https://github.com/MCSManager/Zip-Tools/releases/download/latest/7z_linux_x64
 
 
-# For other OS & CPU architectures, please download from here:
+# 其他 OS & CPU 架构请前往这里下载：
 # PTY: https://github.com/MCSManager/PTY/releases
 # Zip-Tools: https://github.com/MCSManager/Zip-Tools/releases
 # 7z: https://github.com/MCSManager/Zip-Tools/releases
 
 ```
 
-#### 3. Install Node.js Dependencies
+#### 3. 安装 Node.js 依赖库
 
 ```bash
 
@@ -65,7 +65,7 @@ wget https://github.com/MCSManager/Zip-Tools/releases/download/latest/7z_linux_x
 ./install-dependents.bat
 ```
 
-#### 4. Run MCSManager
+#### 4. 运行 MCSManager
 
 ```bash
 npm run dev
@@ -73,38 +73,38 @@ npm run dev
 
 <br />
 
-### Unsafe Integration-Test Mode (automated tests only)
+### 不安全的集成测试模式（仅限自动化测试）
 
-The panel accepts an **insecure** startup flag that disables authentication so automated integration tests can call privileged APIs without a real login:
+面板支持一个**不安全**的启动参数，用于关闭鉴权，让自动化集成测试无需真实登录即可调用高权限 API：
 
 ```bash
-node production/app.js --Unsafe-Integration-Test-Mode=<key>
+node production/app.js --Unsafe-Integration-Test-Mode=<密钥>
 ```
 
-- The parameter **name** is matched case-insensitively (`--unsafe-integration-test-mode=<key>` works too); the `<key>` value is case-sensitive.
-- While enabled, any request carrying an `x-request-api-key` header equal to `<key>` skips **all** permission checks in `panel/src/app/middleware/permission.ts` (API-key validation, token and session checks) and is forwarded straight to the route handler.
-- Only the header is recognized; the `?apikey=` query parameter does not trigger the bypass.
-- The mode is disabled unless the flag is explicitly passed; it is not stored in any configuration file.
+- 参数**名称**不区分大小写（`--unsafe-integration-test-mode=<密钥>` 同样有效）；`<密钥>` 的值区分大小写。
+- 启用后，任何携带 `x-request-api-key` 请求头且其值等于 `<密钥>` 的请求，都会跳过 `panel/src/app/middleware/permission.ts` 中的**全部**权限校验（API Key 校验、Token 与会话校验），直接进入路由处理函数。
+- 仅识别请求头，`?apikey=` 查询参数不会触发放行。
+- 未显式传入该参数时该模式处于关闭状态，且不会写入任何配置文件。
 
-> **Security warning:** anyone who knows the key gets full admin access. Use a long random key and never enable this on a production instance.
+> **安全警告：** 任何知道该密钥的人都将拥有完整管理员权限。请使用足够长的随机密钥，切勿在生产环境启用。
 
 <br />
 
-### Internationalizing Your Code
+### 国际化你的代码
 
-Since the project supports multiple languages, all `strings` and `comments` in the code must be in English only. Do not hardcode non-English text directly in the code.
+由于项目适配多国语言，所以代码中的所有 `字符串`，`注释` 都只接受英文，所以请勿直接硬文本非英语在代码中。
 
-For example, if you write a new string that needs to support multiple languages:
+比如你可能写了一行新的字符串，需要适配多国语言。
 
 ```ts
 import { $t } from "../i18n";
 
 if (!checkName) {
-  const errorMsg = "Hello，这是一个错误！"; // Don't do this!
-  const errorMsg = $t("TXT_CODE_MY_ERROR"); // Correct approach
+  const errorMsg = "Hello，这是一个错误！"; // 不要这样做！
+  const errorMsg = $t("TXT_CODE_MY_ERROR"); // 正确做法
 }
 
-// Usage with parameters, only Web backend, Daemon Backend.
+// 带参数的使用方式
 const errorMsgWithParams = $t("TXT_CODE_INSTANCE_ERROR", {
   uuid: instance.instanceUuid,
   err: err
@@ -115,9 +115,9 @@ languages/en_US.json
 
 ```json
 {
-  // All translation text Keys must be unique, so please use a longer name if possible! frontend only.
+  // 所有的翻译文案 Key，不可有重复，所以请可能的取一个较长的名字！
   "TXT_CODE_MY_ERROR": "Hello，这是一个错误！",
-  // If parameters are needed, use double curly braces. only Web backend, Daemon Backend.
+  // 如果需要携带参数，Web 后端、Daemon 后端则使用两个花括号
   "TXT_CODE_INSTANCE_ERROR": "Exception instance {{uuid}}: {{err}}"
 }
 ```
@@ -134,7 +134,7 @@ languages/en_US.json
     <FormOutlined />
     {{ t("TXT_CODE_NODE_INFO") }}
 
-    <!-- If parameters are needed, frontend code uses single curly braces -->
+    <!-- 如果需要携带参数，前端代码使用一个花括号 -->
     <div>{{ t("TXT_CODE_FILE_ERROR", { name: props.fileName }) }}</div>
   </a-menu-item>
 </template>
@@ -145,32 +145,32 @@ languages/en_US.json
 ```json
 {
   "TXT_CODE_NODE_INFO": "Jump to Node Page",
-  // If parameters are needed, frontend code uses single curly braces
+  // 如果需要携带参数，前端代码使用一个花括号
   "TXT_CODE_FILE_ERROR": "File {name} error!"
 }
 ```
 
-Please add this line to the language file, for example: `languages/en_US.json`
+请在语言文件中新增这一行，比如：`languages/en_US.json`
 
-> All language texts are in `languages/*.json`, with all translations based on `en_US.json`. Therefore, if you modify any text or add any new files, `en_US.json` **must be modified and updated**, as it is the source text for all countries' languages. Other countries' languages can be automatically translated by us using AI.
+> 所有语言的文案都在 `languages/*.json` 中，所有翻译以 `en_US.json` 为准，所以如果你修改了任何文案，或者新增了任何文件 `en_US.json` 是**必须修改和新增**的，它是所有国家语言的源文案，其他国家的语言可以由我们使用 AI 来自动翻译。
 
-If you have the `I18n Ally` plugin installed, your `$t("TXT_CODE_MY_ERROR")` should display the corresponding text.
+如果你安装了 `I18n Ally` 插件，你的 `$t("TXT_CODE_MY_ERROR")` 应该会浮现对应的文案。
 
 <br />
 
-### Building Production Version
+### 构建生产环境版本
 
 ```bash
 ./build.bat # Windows
 ./build.sh  # MacOS
 ```
 
-After the build is complete, you will find the production code in the `production-code` directory.
+构建完成后，你会在 `production-code` 目录下找到生产环境代码。
 
 <br />
 
-### Finally
+### 最后
 
-For more content, please refer to the official documentation.
+更多内容，请移步到官方文档进行翻阅。
 
 https://docs.mcsmanager.com/ops/mcsm_network.html

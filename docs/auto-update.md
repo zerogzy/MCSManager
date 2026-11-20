@@ -1,62 +1,44 @@
-# Auto-Update: Panel & Daemon Self-Update
+# 自动更新：面板与守护进程自更新
 
-This document is the reference for the MCSManager auto-update feature. Read it
-before touching anything under `**/upgrade_*`, `common/src/upgrade.ts`,
-`scripts/*update*`, or the update UI in `Settings.vue` / `NodeItem.vue`.
+本文档是 MCSManager 自动更新功能的参考文档。在修改 `**/upgrade_*`、`common/src/upgrade.ts`、`scripts/*update*`，或 `Settings.vue` / `NodeItem.vue` 中的更新界面之前，请先阅读本文。
 
-> Historical note: this feature was originally designed and tested in a past
-> AI-workflow era whose design docs were never migrated into this repo. Those
-> notes are partially outdated anyway (e.g. the `allowAutoUpdate` switch and the
-> Settings top banner were removed; the UI now lives in the left tab bar).
-> This file reflects the current implementation and is the authoritative
-> reference.
+> 历史说明：该功能最初是在过去某个 AI 工作流时代设计和测试的，当时的设计文档从未迁移到本仓库。
+> 那些笔记本身也已部分过时（例如 `allowAutoUpdate` 开关和设置页顶部横幅已被移除；
+> 现在的界面位于左侧标签栏）。本文反映当前的实际实现，是权威参考。
 
-## 1. Overview
+## 1. 概览
 
-Operators can update the **panel (web)** and any **remote daemon (node)** from
-the web UI — no manual file replacement, no SSH. Updates are **manual and
-explicit**; nothing is downloaded or applied in the background.
+运维人员可以直接在 Web 界面中更新**面板（web）**以及任何**远程守护进程（节点）**，无需手动替换文件，也无需 SSH。更新是**手动且显式**的；不会在后台下载或应用任何内容。
 
-| Target | Trigger surface | What gets updated |
+| 目标 | 触发入口 | 更新内容 |
 | --- | --- | --- |
-| Panel | Settings → "Auto Update" tab → "Update Panel" button | `app.js`, `package.json`, `public/` (front-end bundle), plus whatever the package ships |
-| Daemon | Node card → operator button group → "Update Daemon" | daemon `app.js`, `package.json`, etc. — target-specific `lib/` binaries (PTY/Zip-Tools) are never replaced |
+| 面板 | 设置 → "自动更新"标签页 → "更新面板"按钮 | `app.js`、`package.json`、`public/`（前端产物），以及更新包中包含的其他内容 |
+| 守护进程 | 节点卡片 → 操作按钮组 → "更新守护进程" | 守护进程的 `app.js`、`package.json` 等；各平台专用的 `lib/` 二进制文件（PTY/Zip-Tools）不会被替换 |
 
-Both flows download an update package from an operator-configured **update
-source** (`updateSourceUrl`, a manifest URL — by default the manifest published
-on the official GitHub Release) and overlay the whole package onto the
-install directory. The new build takes effect only after a **manual restart**:
-the UI shows a "restart to apply" modal and the process log records a
-reminder — nothing restarts by itself.
+两种流程都会从运维人员配置的**更新源**（`updateSourceUrl`，一个清单 URL，默认为官方 GitHub Release 上发布的清单）下载更新包，并将整个包覆盖到安装目录。新版本只有在**手动重启**后才会生效：界面会弹出"重启以应用更新"的对话框，进程日志中也会记录提醒，不会自动重启。
 
-> **Update source (since the GitHub Release pipeline):** the default
-> `updateSourceUrl` is the update manifest asset of the official release,
-> `https://github.com/MCSManager/MCSManager/releases/latest/download/mcsmanager_update_manifest.json`.
-> Each release publishes `mcsmanager_update_manifest.json` plus the code-only
-> packages `mcsmanager_web_update.tar.gz` and `mcsmanager_daemon_update.tar.gz`
-> (built `app.js`/`package.json`/`public/` only — no dependency trees, no
-> PTY/Zip-Tools binaries, no runtimes). The manifest's `url` fields are pinned
-> to the release tag that produced them. Installs that still carry the legacy
-> mcsmanager.com source as their *primary* are migrated to the new default on
-> startup (`migrateLegacyUpdateSourceUrl`); operator-customized source URLs are
-> never touched. Zip packages remain supported for custom sources.
+> **更新源（自 GitHub Release 流水线起）：** 默认的 `updateSourceUrl` 是官方 Release 的更新清单资源，
+> `https://github.com/MCSManager/MCSManager/releases/latest/download/mcsmanager_update_manifest.json`。
+> 每个 Release 会发布 `mcsmanager_update_manifest.json`，以及仅含代码的更新包
+> `mcsmanager_web_update.tar.gz` 和 `mcsmanager_daemon_update.tar.gz`
+>（只包含构建出的 `app.js`/`package.json`/`public/`，不含依赖目录、
+> PTY/Zip-Tools 二进制文件和运行时）。清单中的 `url` 字段固定指向生成它们的 Release 标签。
+> 仍把旧版 mcsmanager.com 源作为*主源*的安装，会在启动时迁移到新的默认值
+>（`migrateLegacyUpdateSourceUrl`）；运维人员自定义的源 URL 永远不会被改动。
+> 自定义源仍然支持 zip 包。
 
-> **Backup update source (`updateSourceUrlFallback`):** every side resolves its
-> manifest through an ordered two-candidate list — `updateSourceUrl` first,
-> then `updateSourceUrlFallback` (default:
-> `https://mcsmanager.com/upgrade/manifest.json`, the legacy mcsmanager.com
-> hosting). A fetch-level failure of the primary (timeout, connection error,
-> HTTP non-2xx, redirect limit, invalid JSON) moves on to the backup; a
-> parseable manifest is used as-is (semantic problems never cross sources).
-> The feature is disabled **only when both fields are empty** — clearing just
-> the primary does not disable update checks. Both fields are editable on the
-> Settings → Auto Update page and persisted in the config files.
+> **备用更新源（`updateSourceUrlFallback`）：** 每一端都通过一个有序的两候选列表解析清单：
+> 先 `updateSourceUrl`，再 `updateSourceUrlFallback`（默认：
+> `https://mcsmanager.com/upgrade/manifest.json`，即旧版 mcsmanager.com 托管）。
+> 主源出现获取层面的失败（超时、连接错误、HTTP 非 2xx、重定向次数超限、JSON 无效）时会转向备用源；
+> 能够解析的清单会被直接使用（语义问题不会跨源重试）。
+> **只有当两个字段都为空时**该功能才会被禁用，只清空主源并不会禁用更新检查。
+> 两个字段都可以在设置 → 自动更新页面中编辑，并持久化到配置文件中。
 >
-> Ops note: the backup manifest + zips are hosted outside the GitHub Release
-> pipeline and must be refreshed when a release ships, otherwise a fallback
-> check reports "already latest" against the older mirrored versions.
+> 运维提示：备用清单和 zip 包托管在 GitHub Release 流水线之外，发布新版本时必须同步刷新，
+> 否则通过备用源检查时，会对照旧的镜像版本报告"已是最新"。
 
-## 2. Architecture / data flow
+## 2. 架构 / 数据流
 
 ```
 frontend
@@ -74,16 +56,11 @@ panel/src/app/service/upgrade_service.ts   daemon/src/service/upgrade_service.ts
      updateSourceUrl -> updateSourceUrlFallback -> manifest.json -> { web | daemon: { version, url, notes } } -> *.tar.gz | *.zip
 ```
 
-`common/` is compiled into panel and daemon via source alias (tsconfig `paths` +
-webpack `resolve.alias`), so changes there require rebuilding both apps.
+`common/` 通过源码别名（tsconfig `paths` + webpack `resolve.alias`）编译进 panel 和 daemon，因此修改该目录后需要重新构建这两个应用。
 
-## 3. Manifest schema
+## 3. 清单格式
 
-`updateSourceUrl` points at a small JSON document. The official source is the
-`mcsmanager_update_manifest.json` asset published on every GitHub Release
-(generated by `scripts/build-release-update-packages.mjs`, which also packs the
-two update tarballs from the same `production-code/` build); custom sources may
-serve the same schema from anywhere:
+`updateSourceUrl` 指向一个小型 JSON 文档。官方源是每个 GitHub Release 上发布的 `mcsmanager_update_manifest.json` 资源（由 `scripts/build-release-update-packages.mjs` 生成，该脚本同时会从同一个 `production-code/` 构建中打出两个更新 tarball）；自定义源可以在任意位置提供相同格式：
 
 ```json
 {
@@ -103,226 +80,116 @@ serve the same schema from anywhere:
 }
 ```
 
-- **`version`** — dotted numeric string. Compared with `compareVersions()`
-  (`common/src/upgrade.ts`): split on `.`, compare segment-wise numerically,
-  missing segments count as `0`. This is intentionally **not** strict semver.
-  An optional leading `v` is ignored (`normalizeVersion`). A version that is
-  not dotted-numeric after that is **malformed** and fail-closed: it is never
-  offered as an update (`isComparableVersion`).
-- **`url`** — full http/https URL of the update package (redirects are
-  followed). `.tar.gz`/`.tgz` (official packages) and `.zip` (custom sources)
-  are both accepted.
-- **`notes`** *(optional)* — release notes of the new version, shown in the UI
-  after a version scan:
-  - Preferred form: a **locale → text map**. Keys are runtime locale codes
-    (lowercase region, e.g. `en_us`, `zh_cn` — same shape as
-    `toStandardLang()` output). Matching is case- and hyphen-insensitive, so
-    `en-US` works too.
-  - A plain **string** is accepted as language-neutral fallback text.
-  - Resolution (`frontend/src/tools/localizedNotes.ts::pickLocalizedNotes`):
-    exact locale → base language (`zh_cn` → `zh`) → `en_us` → `en`; if nothing
-    matches the section is hidden. A missing English entry is a malformed
-    manifest.
-- Top-level `daemon` / `web` entries are **optional**; a missing entry for the
-  side being updated yields `TXT_CODE_AUTOUPDATE_B_MANIFEST_MISSING`.
+- **`version`**：以点分隔的数字字符串。用 `compareVersions()`（`common/src/upgrade.ts`）比较：按 `.` 拆分，逐段按数值比较，缺失的段按 `0` 处理。这里有意**不使用**严格的 semver。可选的前导 `v` 会被忽略（`normalizeVersion`）。去掉 `v` 后仍不是点分数字的版本视为**格式错误**，按"失败即关闭"处理：永远不会作为更新被提供（`isComparableVersion`）。
+- **`url`**：更新包的完整 http/https URL（会跟随重定向）。`.tar.gz`/`.tgz`（官方包）和 `.zip`（自定义源）都被接受。
+- **`notes`** *（可选）*：新版本的发布说明，在版本扫描后显示在界面中：
+  - 推荐形式：**语言区域 → 文本的映射**。键为运行时语言代码（小写区域，如 `en_us`、`zh_cn`，与 `toStandardLang()` 输出的形式相同）。匹配时不区分大小写和连字符，所以 `en-US` 也可以。
+  - 普通**字符串**会被当作与语言无关的兜底文本。
+  - 解析顺序（`frontend/src/tools/localizedNotes.ts::pickLocalizedNotes`）：精确匹配语言区域 → 基础语言（`zh_cn` → `zh`） → `en_us` → `en`；都不匹配则隐藏该区块。缺少英文条目视为清单格式错误。
+- 顶层的 `daemon` / `web` 条目都是**可选**的；被更新的一端缺少对应条目时，会返回 `TXT_CODE_AUTOUPDATE_B_MANIFEST_MISSING`。
 
-Language selection happens in the **frontend** (against the current panel UI
-language, `getCurrentLang()`), not in the backend: the manifest is fetched by
-the panel/daemon service, but only the browser knows the language the user is
-actually looking at. The backend therefore passes `onlineNotes` through
-untouched (`string | Record<string, string>`).
+语言选择发生在**前端**（依据当前面板界面语言 `getCurrentLang()`），而不在后端：清单由 panel/daemon 服务获取，但只有浏览器知道用户实际看到的语言。因此后端会原样透传 `onlineNotes`（`string | Record<string, string>`）。
 
-## 4. Key components
+## 4. 关键组件
 
-| Layer | File | Role |
+| 层 | 文件 | 作用 |
 | --- | --- | --- |
-| shared | `common/src/upgrade.ts` | `compareVersions`/`normalizeVersion`/`isComparableVersion`, `fetchJson`, `fetchJsonFromSources` (primary→backup candidate list), `downloadToFile`, `extractArchive` (`extractTarGz` + `extractZip`, both with traversal guards), `applyUpgradePackage` (transactional overlay), `migrateLegacyUpdateSourceUrl` |
-| panel | `panel/src/app/service/upgrade_service.ts` | manifest fetch (uses `web` entry), fail-closed version compare, download/overlay (no auto-restart) |
-| panel | `panel/src/app/routers/upgrade_router.ts` | `/api/upgrade/panel_info`, `/api/upgrade/panel`, `/api/upgrade/daemon_info`, `/api/upgrade/daemon` (ADMIN only); forwards the panel's source URLs (primary + backup) to daemons |
-| daemon | `daemon/src/service/upgrade_service.ts` | same as panel side, for the `daemon` entry; each forwarded source field wins over its daemon-local counterpart |
-| daemon | `daemon/src/routers/upgrade_router.ts` | socket.io `upgrade/info`, `upgrade/daemon` |
-| config | `panel/src/app/entity/setting.ts`, `daemon/src/entity/config.ts` | `updateSourceUrl` + `updateSourceUrlFallback` (defaults: GitHub Release manifest URL / legacy mcsmanager.com manifest URL; both empty ⇒ feature disabled); legacy *primary* migrated in both `version_adapter`s |
-| release | `scripts/build-release-update-packages.mjs`, `.github/workflows/release.yml` | packs `mcsmanager_{daemon,web}_update.tar.gz` + writes `mcsmanager_update_manifest.json` as release assets |
-| frontend API | `frontend/src/services/apis/index.ts` | `IUpgradeInfo` / `IUpgradeResult`, `getPanelUpgradeInfo`, `upgradePanel`, `getDaemonUpgradeInfo`, `upgradeDaemon` |
-| frontend UI | `frontend/src/widgets/Settings.vue` | auto-update tab: status tags, source URL inputs (primary + backup), update button, localized release-notes box |
-| frontend UI | `frontend/src/widgets/node/NodeItem.vue` | update icon + tooltip next to the daemon version, "Update Daemon" in the operator button group |
-| frontend util | `frontend/src/tools/localizedNotes.ts` | release-notes locale resolution (unit-tested) |
-| test harness | `scripts/build-update-packages.mjs`, `scripts/update-test-server.mjs`, `scripts/verify-auto-update.mjs`, `scripts/verify-auto-update-strict.mjs`, `scripts/auto-update-test-utils.mjs` | local packages + static server + E2E verification (see §6) |
+| 共享 | `common/src/upgrade.ts` | `compareVersions`/`normalizeVersion`/`isComparableVersion`、`fetchJson`、`fetchJsonFromSources`（主源→备用源候选列表）、`downloadToFile`、`extractArchive`（`extractTarGz` + `extractZip`，均带路径穿越防护）、`applyUpgradePackage`（事务性覆盖）、`migrateLegacyUpdateSourceUrl` |
+| panel | `panel/src/app/service/upgrade_service.ts` | 获取清单（使用 `web` 条目）、失败即关闭的版本比较、下载/覆盖（不自动重启） |
+| panel | `panel/src/app/routers/upgrade_router.ts` | `/api/upgrade/panel_info`、`/api/upgrade/panel`、`/api/upgrade/daemon_info`、`/api/upgrade/daemon`（仅管理员）；将面板的更新源 URL（主源 + 备用源）转发给守护进程 |
+| daemon | `daemon/src/service/upgrade_service.ts` | 与面板端相同，处理 `daemon` 条目；转发来的每个源字段都优先于守护进程本地对应的字段 |
+| daemon | `daemon/src/routers/upgrade_router.ts` | socket.io `upgrade/info`、`upgrade/daemon` |
+| 配置 | `panel/src/app/entity/setting.ts`、`daemon/src/entity/config.ts` | `updateSourceUrl` + `updateSourceUrlFallback`（默认值：GitHub Release 清单 URL / 旧版 mcsmanager.com 清单 URL；两者都为空 ⇒ 功能禁用）；旧版*主源*在两个 `version_adapter` 中迁移 |
+| 发布 | `scripts/build-release-update-packages.mjs`、`.github/workflows/release.yml` | 打包 `mcsmanager_{daemon,web}_update.tar.gz`，并将 `mcsmanager_update_manifest.json` 作为 Release 资源写出 |
+| 前端 API | `frontend/src/services/apis/index.ts` | `IUpgradeInfo` / `IUpgradeResult`、`getPanelUpgradeInfo`、`upgradePanel`、`getDaemonUpgradeInfo`、`upgradeDaemon` |
+| 前端 UI | `frontend/src/widgets/Settings.vue` | 自动更新标签页：状态标签、源 URL 输入框（主源 + 备用源）、更新按钮、本地化的发布说明框 |
+| 前端 UI | `frontend/src/widgets/node/NodeItem.vue` | 守护进程版本旁的更新图标 + 提示，操作按钮组中的"更新守护进程" |
+| 前端工具 | `frontend/src/tools/localizedNotes.ts` | 发布说明的语言解析（有单元测试） |
+| 测试工具 | `scripts/build-update-packages.mjs`、`scripts/update-test-server.mjs`、`scripts/verify-auto-update.mjs`、`scripts/verify-auto-update-strict.mjs`、`scripts/auto-update-test-utils.mjs` | 本地更新包 + 静态服务器 + 端到端验证（见 §6） |
 
-## 5. Design decisions & rationale
+## 5. 设计决策与理由
 
-- **Manual, explicit updates.** No background polling for updates, no silent
-  installs. The operator scans (via the refresh button / page load), reviews the
-  release notes, and clicks update.
-- **Fail-closed version checking.** "Update available" is offered only when the
-  manifest fetch/parse succeeds and the advertised version is a comparable
-  dotted-numeric version (`isComparableVersion`) newer than the running one.
-  Fetch failures (after every configured source has been tried), malformed
-  manifests and malformed versions all mean *no update prompt* — never a wrong
-  one.
-- **Two-candidate source list with fetch-level fallback.** Manifest resolution
-  tries `updateSourceUrl` then `updateSourceUrlFallback` (empty values skipped,
-  duplicates collapsed) via `fetchJsonFromSources` in
-  `common/src/upgrade.ts`. Only fetch/parse failures (timeout, connection
-  error, HTTP non-2xx, redirect limit, invalid JSON) move on to the next
-  candidate — a parseable manifest is used as-is, so a missing side entry or a
-  malformed version never causes a cross-source retry. The reported
-  `updateSourceUrl` is the URL that actually served the manifest (first
-  configured candidate when all fetches failed, empty when disabled).
-- **Dual-empty disable.** Update checks are off only when BOTH source fields
-  are empty; clearing just the primary leaves the backup in force (the
-  settings copy says so explicitly). The default backup is the legacy
-  mcsmanager.com manifest, a live external host — the e2e harnesses therefore
-  always manage both fields explicitly to stay hermetic.
-- **Whole-package overlay** instead of a fixed file whitelist
-  (`app.js`/`package.json`/`public`). Whatever the package ships is copied over,
-  so updates can add new files (e.g. new front-end assets). Runtime-state
-  directories are skipped: `data/`, `logs/`, `__upgrade_staging/`,
-  `node_modules/` (`OVERLAY_SKIP_TOP_DIRS` in `common/src/upgrade.ts`).
-- **Transactional apply.** `applyUpgradePackage` backs up every file it will
-  overwrite into `__upgrade_staging/backup`, applies the overlay, and rolls back
-  (restores backups, deletes added files) if any single copy fails. The staging
-  area is deleted on success.
-- **Validity gate before mutation.** The package must contain `app.js`
-  (`requiredFiles`); a package without it is rejected before anything is
-  written.
-- **Traversal protection (zip & tar.gz).** `extractZip` and `extractTarGz` both
-  resolve every entry and refuse entries escaping the destination directory
-  (Zip-Slip / Tar-Slip). `extractTarGz` additionally rejects symlink, hardlink
-  and device entries outright — a link could later redirect writes outside the
-  destination. A violating entry aborts the whole extraction before the install
-  directory is touched. node-stream-zip's own guard is a second layer.
-- **Download deadline, not idle timeout.** `downloadToFile(url, dest, timeoutMs)`
-  enforces a *total* deadline (5 min for update zips) so a slow-drip (TARPIT)
-  source cannot hold the upgrade lock forever.
-- **Upgrade lock.** A single `upgradeInProgress` flag per process prevents
-  concurrent upgrades.
-- **No automatic restart.** An update only overlays files on disk; the running
-  process keeps the old build in memory. The UI shows a `Modal.success` popup
-  and the process log records a reminder, both telling the operator to restart
-  the panel/daemon manually (systemd/pm2 restart, Ctrl+C + start, ...) for the
-  new version to take effect. `getVersion()` is read at startup, so the API
-  keeps reporting the old version — and keeps offering the update — until that
-  restart happens.
-- **Panel forwards its source URLs to daemons.** Configure the sources once in
-  the panel; every node is updated from them even if its own config is empty.
-  Each forwarded field wins over its daemon-local counterpart
-  (`effectiveSourceUrls` in `daemon/src/service/upgrade_service.ts`).
-- **Legacy source migration.** On startup, panel and daemon `version_adapter`s
-  rewrite a persisted *primary* `updateSourceUrl` still equal to the legacy
-  mcsmanager.com default to the GitHub Release manifest URL
-  (`migrateLegacyUpdateSourceUrl` in `common/src/upgrade.ts`) — the same URL
-  remains valid as the default *backup* value. Any other value is an operator
-  choice and is left untouched.
-- **Version reporting** comes from `package.json` at runtime
-  (`getVersion()`); an update that only replaces `package.json` still reports
-  the new version after restart.
-- **Windows caveat.** Runtime `.js` files can be overwritten while running, but
-  loaded native binaries (`daemon/lib/*.node`, `*.exe`) are locked; the overlay
-  then fails mid-way and the transaction rolls back — the update aborts cleanly
-  instead of leaving a half-upgraded install.
-- **UI precedence on the node card.** When the manifest advertises a newer
-  version, the version row shows the update icon + localized notes instead of
-  the "version mismatch with panel" warning (`TXT_CODE_e520908a`); the mismatch
-  warning remains as fallback when no update is advertised.
+- **手动、显式更新。** 不在后台轮询更新，不做静默安装。运维人员通过刷新按钮或打开页面进行扫描，查看发布说明，再点击更新。
+- **失败即关闭的版本检查。** 只有当清单获取/解析成功，且公布的版本是可比较的点分数字版本（`isComparableVersion`）并新于当前运行的版本时，才会提示"有可用更新"。获取失败（所有已配置的源都尝试过之后）、清单格式错误、版本格式错误，都意味着*不弹更新提示*，绝不会给出错误的提示。
+- **带获取层回退的两候选源列表。** 清单解析通过 `common/src/upgrade.ts` 中的 `fetchJsonFromSources`，先尝试 `updateSourceUrl`，再尝试 `updateSourceUrlFallback`（跳过空值，合并重复项）。只有获取/解析失败（超时、连接错误、HTTP 非 2xx、重定向次数超限、JSON 无效）才会转向下一个候选；能解析的清单会被直接使用，所以缺少某一端条目或版本格式错误，都不会引发跨源重试。上报的 `updateSourceUrl` 是实际提供清单的那个 URL（所有获取都失败时为第一个已配置的候选，禁用时为空）。
+- **双空才禁用。** 只有当两个源字段**都**为空时，更新检查才会关闭；只清空主源，备用源仍然生效（设置页的文案对此有明确说明）。默认的备用源是旧版 mcsmanager.com 清单，是一个真实的外部主机，因此端到端测试脚本总是显式管理这两个字段，以保持隔离。
+- **整包覆盖**，而不是固定文件白名单（`app.js`/`package.json`/`public`）。更新包中包含的内容都会被复制覆盖，所以更新可以新增文件（例如新的前端资源）。运行时状态目录会被跳过：`data/`、`logs/`、`__upgrade_staging/`、`node_modules/`（`common/src/upgrade.ts` 中的 `OVERLAY_SKIP_TOP_DIRS`）。
+- **事务性应用。** `applyUpgradePackage` 会把所有将被覆盖的文件备份到 `__upgrade_staging/backup`，然后应用覆盖，如果任何一次复制失败就回滚（恢复备份，删除新增的文件）。成功后会删除暂存区。
+- **修改前先做有效性检查。** 更新包必须包含 `app.js`（`requiredFiles`）；缺少它的包会在写入任何内容之前就被拒绝。
+- **路径穿越防护（zip 和 tar.gz）。** `extractZip` 和 `extractTarGz` 都会解析每个条目，并拒绝逃出目标目录的条目（Zip-Slip / Tar-Slip）。`extractTarGz` 还会直接拒绝符号链接、硬链接和设备文件条目，因为链接之后可能把写入重定向到目标目录之外。出现违规条目会在触碰安装目录之前中止整个解压。node-stream-zip 自带的防护是第二层。
+- **下载使用总超时，而不是空闲超时。** `downloadToFile(url, dest, timeoutMs)` 强制执行*总*期限（更新 zip 为 5 分钟），这样慢速滴灌（TARPIT）的源就无法永久占用更新锁。
+- **更新锁。** 每个进程只有一个 `upgradeInProgress` 标志，防止并发更新。
+- **不自动重启。** 更新只在磁盘上覆盖文件；运行中的进程仍在内存里使用旧版本。界面会弹出 `Modal.success` 提示，进程日志也会记录提醒，两者都告知运维人员需要手动重启面板/守护进程（systemd/pm2 重启、Ctrl+C 后再启动等），新版本才会生效。`getVersion()` 在启动时读取，所以在重启之前，API 仍会报告旧版本，并继续提示可更新。
+- **面板把自己的源 URL 转发给守护进程。** 只需在面板中配置一次源，即使节点自己的配置为空，每个节点也会从这些源更新。转发来的每个字段都优先于守护进程本地对应的字段（`daemon/src/service/upgrade_service.ts` 中的 `effectiveSourceUrls`）。
+- **旧版源迁移。** 启动时，panel 和 daemon 的 `version_adapter` 会把持久化的、仍等于旧版 mcsmanager.com 默认值的*主源* `updateSourceUrl` 改写为 GitHub Release 清单 URL（`common/src/upgrade.ts` 中的 `migrateLegacyUpdateSourceUrl`），而同一个 URL 作为默认*备用源*的值仍然有效。任何其他值都被视为运维人员的选择，不会被改动。
+- **版本上报**在运行时来自 `package.json`（`getVersion()`）；只替换了 `package.json` 的更新，在重启后同样会上报新版本。
+- **Windows 注意事项。** 运行时的 `.js` 文件在运行中可以被覆盖，但已加载的原生二进制文件（`daemon/lib/*.node`、`*.exe`）会被锁定；此时覆盖会在中途失败，事务回滚，更新被干净地中止，而不会留下升级到一半的安装。
+- **节点卡片上的界面优先级。** 当清单公布了更新的版本时，版本行会显示更新图标 + 本地化的发布说明，而不是"与面板版本不一致"的警告（`TXT_CODE_e520908a`）；没有可用更新时，仍保留版本不一致警告作为兜底。
 
-## 6. Testing
+## 6. 测试
 
-### Frontend unit tests (vitest)
+### 前端单元测试（vitest）
 
-- `frontend/src/tools/__test__/localizedNotes.test.ts` — locale matching / English
-  fallback rules for release notes.
-- `frontend/src/widgets/__test__/Settings.test.ts` — auto-update tab rendering, localized
-  notes box, primary + backup source inputs, save/refresh/update flow.
-- `frontend/src/widgets/node/__test__/NodeItem.test.ts` — update icon + tooltip on the
-  node card, offline behavior, update via the operator button group.
+- `frontend/src/tools/__test__/localizedNotes.test.ts`：发布说明的语言匹配 / 英文兜底规则。
+- `frontend/src/widgets/__test__/Settings.test.ts`：自动更新标签页渲染、本地化说明框、主源 + 备用源输入框、保存/刷新/更新流程。
+- `frontend/src/widgets/node/__test__/NodeItem.test.ts`：节点卡片上的更新图标 + 提示、离线行为、通过操作按钮组更新。
 
-Run: `cd frontend && npm run type-check && npm run lint && npm test`.
+运行：`cd frontend && npm run type-check && npm run lint && npm test`。
 
-### Shared unit tests (vitest)
+### 共享库单元测试（vitest）
 
-- `common/src/__test__/upgrade.test.ts` — `compareVersions` semantics and
-  `fetchJsonFromSources` fallback behavior (primary success, backup on
-  connection error / HTTP error / invalid JSON / timeout, empty primary,
-  duplicate collapse, aggregated all-fail error).
+- `common/src/__test__/upgrade.test.ts`：`compareVersions` 语义和 `fetchJsonFromSources` 的回退行为（主源成功、连接错误 / HTTP 错误 / JSON 无效 / 超时时转向备用源、主源为空、重复项合并、全部失败时的聚合错误）。
 
-Run: `cd common && npm test`.
+运行：`cd common && npm test`。
 
-### Backend config unit tests (vitest)
+### 后端配置单元测试（vitest）
 
-- `panel/src/__test__/system_config_default.test.ts`,
-  `daemon/src/entity/__test__/config.test.ts` — `updateSourceUrl` /
-  `updateSourceUrlFallback` class defaults, upgrade-in of configs predating the
-  fields, custom values and explicit dual-empty preservation.
+- `panel/src/__test__/system_config_default.test.ts`、
+  `daemon/src/entity/__test__/config.test.ts`：`updateSourceUrl` /
+  `updateSourceUrlFallback` 的类默认值、旧版本中缺少这些字段的配置的升级、自定义值，以及显式双空的保留。
 
-Run: `cd panel && npm test` / `cd daemon && npm test`.
+运行：`cd panel && npm test` / `cd daemon && npm test`。
 
-### E2E harnesses (the "backend tests")
+### 端到端测试脚本（"后端测试"）
 
-The webpack build *is* the backend type check; end-to-end behavior is verified
-by two orchestrated harnesses:
+webpack 构建本身就是后端的类型检查；端到端行为由两个编排好的脚本来验证：
 
 ```bash
-# 1. build a release bundle first (BUNDLE=1), producing production-code/
-./build.sh          # or build.bat on Windows
+# 1. 先构建发布包（BUNDLE=1），生成 production-code/
+./build.sh          # Windows 上使用 build.bat
 
-# 2. basic: version bump + whole-package overlay for panel & daemon
+# 2. 基础：面板和守护进程的版本升级 + 整包覆盖
 node scripts/verify-auto-update.mjs
 
-# 3. strict: actual content replacement + negative scenarios
+# 3. 严格：真实的内容替换 + 反向场景
 node scripts/verify-auto-update-strict.mjs
 ```
 
-- `scripts/build-update-packages.mjs` — packs `daemon.tar.gz` / `web.tar.gz` from
-  `production-code/` (bumped `package.json`, `OVERLAY_MARKER.txt`) and writes
-  `manifest.json` (incl. multi-language `notes`).
-- `scripts/update-test-server.mjs` — static HTTP server on `:9999` serving the
-  manifest + zips.
-- `scripts/verify-auto-update.mjs` — install/login, configure sources, assert
-  `panel_info`/`daemon_info` (incl. `onlineNotes` passthrough), run panel +
-  forwarded daemon updates, verify on-disk versions and overlay markers, then
-  simulate the operator's **manual restart** (kill + respawn) and verify the
-  new build reports the new version. The process is expected to stay up
-  during the update itself — there is no auto-restart. Also covers backup
-  source resolution: dead primary + local backup (update offered and the
-  reported `updateSourceUrl` is the backup URL), both sources dead (fail-closed,
-  no update), the same fallback through the panel→daemon forward, and the
-  `updateSourceUrlFallback` key in the panel config file.
-- `scripts/verify-auto-update-strict.mjs` — scenarios:
-  `0` unconfigured (no source anywhere), `A` already-latest rejection,
-  `B` Zip-Slip rejection, `B2` missing-`app.js` validity gate,
-  `C` panel content replacement (app.js marker, public added + overwritten,
-  version bump), `D` daemon content replacement via forwarded source,
-  `F` dead primary + healthy backup serves the update (and the reported source
-  URL is the backup), `G` semantic manifest problems never cross sources
-  (malformed-version primary + healthy backup stays fail-closed).
+- `scripts/build-update-packages.mjs`：从 `production-code/` 打出 `daemon.tar.gz` / `web.tar.gz`（升级后的 `package.json`、`OVERLAY_MARKER.txt`），并写出 `manifest.json`（包含多语言 `notes`）。
+- `scripts/update-test-server.mjs`：在 `:9999` 端口提供清单和 zip 包的静态 HTTP 服务器。
+- `scripts/verify-auto-update.mjs`：安装/登录、配置更新源、断言 `panel_info`/`daemon_info`（包括 `onlineNotes` 透传）、执行面板更新和转发的守护进程更新、验证磁盘上的版本和覆盖标记，然后模拟运维人员的**手动重启**（杀掉并重新拉起），验证新构建上报新版本。预期进程在更新期间保持运行，因为没有自动重启。同时覆盖备用源解析：主源失效 + 本地备用源（提供更新，且上报的 `updateSourceUrl` 是备用源 URL）、两个源都失效（失败即关闭，无更新）、通过面板→守护进程转发的同样回退，以及面板配置文件中的 `updateSourceUrlFallback` 键。
+- `scripts/verify-auto-update-strict.mjs`：场景包括
+  `0` 未配置（任何地方都没有源）、`A` 已是最新时拒绝、
+  `B` 拒绝 Zip-Slip、`B2` 缺少 `app.js` 的有效性检查、
+  `C` 面板内容替换（`app.js` 标记、`public` 新增并被覆盖、版本升级）、`D` 通过转发的源进行守护进程内容替换、
+  `F` 主源失效 + 备用源正常时提供更新（且上报的源 URL 是备用源）、`G` 语义性的清单问题不会跨源
+  （主源版本格式错误 + 备用源正常时，仍然保持失败即关闭）。
 
-Both harnesses assume fresh runtime state: they reset `production-code/*/data`
-and restore baseline `package.json`. Note that **both** source fields default
-to live external URLs (GitHub Release manifest / legacy mcsmanager.com
-manifest); the "unconfigured" scenarios must therefore clear both explicitly
-(panel setting + daemon config, which is read at boot), and every other
-scenario sets both fields so a failing primary can never leak a fetch to the
-live internet. The strict harness also covers a malicious Tar-Slip package
-(rejection before any install-dir write) and a malformed online version (no
-"update available" prompt — the fail-closed rule).
+两个脚本都假定运行时状态是干净的：它们会重置 `production-code/*/data` 并恢复基线 `package.json`。注意，**两个**源字段的默认值都是真实的外部 URL（GitHub Release 清单 / 旧版 mcsmanager.com 清单）；因此"未配置"场景必须显式清空两者（面板设置 + 守护进程配置，后者在启动时读取），其他所有场景都设置两个字段，这样失效的主源就不会把请求泄漏到真实互联网。严格脚本还覆盖了恶意的 Tar-Slip 包（在写入任何安装目录之前就被拒绝）和格式错误的在线版本（不弹"有可用更新"提示，即失败即关闭规则）。
 
-## 7. i18n keys
+## 7. i18n 键
 
-UI strings live in `languages/*.json` (`TXT_CODE_AUTOUPDATE_*`); frontend uses
-`t()` with single-brace params `{v}`, backend/daemon use `$t()` with double
-brace `{{v}}`. Notable keys:
+界面文本位于 `languages/*.json`（`TXT_CODE_AUTOUPDATE_*`）；前端使用 `t()`，参数用单花括号 `{v}`，后端/守护进程使用 `$t()`，参数用双花括号 `{{v}}`。主要的键：
 
-| Key | Where | Meaning |
+| 键 | 位置 | 含义 |
 | --- | --- | --- |
-| `TXT_CODE_AUTOUPDATE_TAB_TITLE` | Settings tab | "Auto Update" |
-| `TXT_CODE_AUTOUPDATE_WEB_*` | Settings tab | panel update section (title, source, save, confirm, restart-required modal, ...) |
-| `TXT_CODE_AUTOUPDATE_WEB_SOURCE_BACKUP*` | Settings tab | backup source input (label, placeholder, description incl. the dual-empty disable rule) |
-| `TXT_CODE_AUTOUPDATE_WEB_NOTES` | Settings tab | heading of the release-notes box |
-| `TXT_CODE_AUTOUPDATE_WEB_LATEST` | Settings tab | "New version available: {v}" tag |
-| `TXT_CODE_AUTOUPDATE_DAEMON_BTN` | Node card button group | "Update Daemon" |
-| `TXT_CODE_AUTOUPDATE_DAEMON_UPDATE_TIP` | Node card tooltip | "New version available: v{v}. Click the Update Daemon button..." |
-| `TXT_CODE_AUTOUPDATE_B_*` | backend errors | already-in-progress / already-latest / manifest missing / no url / apply failed |
+| `TXT_CODE_AUTOUPDATE_TAB_TITLE` | 设置标签页 | "自动更新" |
+| `TXT_CODE_AUTOUPDATE_WEB_*` | 设置标签页 | 面板更新区块（标题、源、保存、确认、需要重启的对话框等） |
+| `TXT_CODE_AUTOUPDATE_WEB_SOURCE_BACKUP*` | 设置标签页 | 备用源输入框（标签、占位符、说明，包括双空禁用规则） |
+| `TXT_CODE_AUTOUPDATE_WEB_NOTES` | 设置标签页 | 发布说明框的标题 |
+| `TXT_CODE_AUTOUPDATE_WEB_LATEST` | 设置标签页 | "有新版本可用：{v}"标签 |
+| `TXT_CODE_AUTOUPDATE_DAEMON_BTN` | 节点卡片按钮组 | "更新守护进程" |
+| `TXT_CODE_AUTOUPDATE_DAEMON_UPDATE_TIP` | 节点卡片提示 | "有新版本可用：v{v}。点击更新守护进程按钮……" |
+| `TXT_CODE_AUTOUPDATE_B_*` | 后端错误 | 已在更新中 / 已是最新 / 清单缺失 / 没有 url / 应用失败 |
 
-Release-note texts inside the manifest are **not** i18n keys — they are
-operator-authored content, localized via the `notes` locale map (§3).
+清单中的发布说明文本**不是** i18n 键，它们是运维人员撰写的内容，通过 `notes` 语言映射实现本地化（§3）。
