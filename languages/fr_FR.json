@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "Téléverser le fichier zip du programme",
   "TXT_CODE_market.deployWithDockerImage": "Déployer avec l'image Docker",
   "TXT_CODE_market.noFilesRequired": "Aucun fichier requis",
-  "TXT_CODE_instance.uploadFilesLater": "Vous pourrez téléverser ultérieurement les fichiers nécessaires à l'exécution du programme via la gestion de fichiers."
+  "TXT_CODE_instance.uploadFilesLater": "Vous pourrez téléverser ultérieurement les fichiers nécessaires à l'exécution du programme via la gestion de fichiers.",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "Cette instance ne prend pas en charge le changement de conteneur Java",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "Environnement Java non valide",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "Cet environnement Java n'est pas disponible sur le nœud",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "Environnement Java actuel",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "Actuel",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "Image personnalisée",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "Changer",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "L'instance est en cours d'exécution. La modification prendra effet après un redémarrage."
 }

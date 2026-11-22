@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "Enviar arquivo zip do programa",
   "TXT_CODE_market.deployWithDockerImage": "Implantar com imagem Docker",
   "TXT_CODE_market.noFilesRequired": "Nenhum arquivo necessário",
-  "TXT_CODE_instance.uploadFilesLater": "Você pode enviar posteriormente os arquivos necessários para executar o programa pelo Gerenciamento de Arquivos."
+  "TXT_CODE_instance.uploadFilesLater": "Você pode enviar posteriormente os arquivos necessários para executar o programa pelo Gerenciamento de Arquivos.",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "Esta instância não oferece suporte à troca de contêiner Java",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "Ambiente Java inválido",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "Este ambiente Java não está disponível no nó",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "Ambiente Java atual",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "Atual",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "Imagem personalizada",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "Alternar",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "A instância está em execução. A alteração entra em vigor após reiniciar."
 }

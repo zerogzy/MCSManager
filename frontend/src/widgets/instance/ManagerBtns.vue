@@ -3,6 +3,9 @@ import InnerCard from "@/components/InnerCard.vue";
 import ResponsiveLayoutGroup from "@/components/ResponsiveLayoutGroup.vue";
 import { useAppRouters } from "@/hooks/useAppRouters";
 import {
+  isJavaContainerEligible,
+  isJavaFamilyMinecraftType,
+  isMinecraftInstanceType,
   TYPE_MINECRAFT_JAVA,
   TYPE_MINECRAFT_MCDR,
   TYPE_STEAM_SERVER_UNIVERSAL,
@@ -18,6 +21,7 @@ import {
   ArrowRightOutlined,
   BuildOutlined,
   CodeOutlined,
+  CoffeeOutlined,
   ControlOutlined,
   DashboardOutlined,
   FieldTimeOutlined,
@@ -33,6 +37,7 @@ import { arrayFilter } from "../../tools/array";
 import EventConfig from "./dialogs/EventConfig.vue";
 import InstanceDetail from "./dialogs/InstanceDetail.vue";
 import InstanceFundamentalDetail from "./dialogs/InstanceFundamentalDetail.vue";
+import JavaEnvironment from "./dialogs/JavaEnvironment.vue";
 import JavaManager from "./dialogs/JavaManager.vue";
 import McPingSettings from "./dialogs/McPingSettings.vue";
 import PingConfig from "./dialogs/PingConfig.vue";
@@ -43,6 +48,7 @@ const terminalConfigDialog = ref<InstanceType<typeof TermConfig>>();
 const rconSettingsDialog = ref<InstanceType<typeof RconSettings>>();
 const mcSettingsDialog = ref<InstanceType<typeof McPingSettings>>();
 const javaManagerDialog = ref<InstanceType<typeof JavaManager>>();
+const javaEnvironmentDialog = ref<InstanceType<typeof JavaEnvironment>>();
 const eventConfigDialog = ref<InstanceType<typeof EventConfig>>();
 const pingConfigDialog = ref<InstanceType<typeof PingConfig>>();
 const instanceDetailsDialog = ref<InstanceType<typeof InstanceDetail>>();
@@ -155,20 +161,23 @@ const btns = computed(() => {
         toPage({ path: "/instances/terminal/mods" });
       },
       condition: () => {
-        const type = instanceInfo.value?.config.type || "";
         // Narrow it down to Minecraft server types only (Java, Bedrock, MCDR)
-        const isMC =
-          type.startsWith("minecraft/java") ||
-          type.startsWith("minecraft/bedrock") ||
-          type === TYPE_MINECRAFT_MCDR;
-        if (!isMC) return false;
+        if (!isMinecraftInstanceType(instanceInfo.value?.config.type)) return false;
         const hasPermission = state.settings.canFileManager || isAdmin.value;
         if (!hasPermission) return false;
         if (!foldersLoaded.value) return false;
         return folders.value && folders.value.length > 0;
       }
     },
-
+    {
+      // Docker counterpart of Java Manager; shares its label (the two never show together)
+      title: t("TXT_CODE_3fee13ed"),
+      icon: CoffeeOutlined,
+      click: () => {
+        javaEnvironmentDialog.value?.openDialog();
+      },
+      condition: () => isJavaContainerEligible(instanceInfo.value?.config)
+    },
     {
       title: t("TXT_CODE_3fee13ed"),
       icon: BuildOutlined,
@@ -176,9 +185,8 @@ const btns = computed(() => {
         javaManagerDialog.value?.openDialog();
       },
       condition: () =>
-        (instanceInfo.value?.config.type.includes(TYPE_MINECRAFT_JAVA) &&
-          instanceInfo.value?.config.processType === "general") ??
-        false
+        isJavaFamilyMinecraftType(instanceInfo.value?.config.type) &&
+        instanceInfo.value?.config.processType === "general"
     },
     {
       title: t("TXT_CODE_656a85d8"),
@@ -343,6 +351,14 @@ watch(instanceInfo, (cfg, oldCfg) => {
     :instance-info="instanceInfo"
     :daemon-id="daemonId"
     :instance-id="instanceId"
+    @update="refreshInstanceInfo"
+  />
+
+  <JavaEnvironment
+    ref="javaEnvironmentDialog"
+    :instance-info="instanceInfo"
+    :instance-id="instanceId"
+    :daemon-id="daemonId"
     @update="refreshInstanceInfo"
   />
 </template>

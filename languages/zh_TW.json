@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "上傳程式 zip 檔",
   "TXT_CODE_market.deployWithDockerImage": "使用 Docker 映像部署",
   "TXT_CODE_market.noFilesRequired": "無需任何檔案",
-  "TXT_CODE_instance.uploadFilesLater": "您可以後續透過檔案管理上傳執行程式所需的檔案。"
+  "TXT_CODE_instance.uploadFilesLater": "您可以後續透過檔案管理上傳執行程式所需的檔案。",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "該實例不支援切換 Java 容器",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "無效的 Java 環境",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "節點上沒有這個 Java 環境",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "目前 Java 環境",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "目前",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "自訂映像",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "切換",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "實例正在執行，重新啟動後生效"
 }

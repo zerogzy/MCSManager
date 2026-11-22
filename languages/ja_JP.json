@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "プログラムの zip ファイルをアップロード",
   "TXT_CODE_market.deployWithDockerImage": "Docker イメージでデプロイ",
   "TXT_CODE_market.noFilesRequired": "ファイルは不要です",
-  "TXT_CODE_instance.uploadFilesLater": "プログラムの実行に必要なファイルは、後でファイル管理からアップロードできます。"
+  "TXT_CODE_instance.uploadFilesLater": "プログラムの実行に必要なファイルは、後でファイル管理からアップロードできます。",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "このインスタンスは Java コンテナの切り替えに対応していません",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "無効な Java 環境です",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "この Java 環境はノード上で利用できません",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "現在の Java 環境",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "現在",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "カスタムイメージ",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "切り替え",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "インスタンスは実行中です。変更は再起動後に反映されます。"
 }

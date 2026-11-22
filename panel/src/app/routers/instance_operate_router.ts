@@ -9,6 +9,7 @@ import permission from "../middleware/permission";
 import validator from "../middleware/validator";
 import { updateInstanceWithAudit } from "../service/instance_config_audit";
 import { getInstanceNameSafely } from "../service/instance_name_service";
+import { listJavaEnvironments, resolveJavaEnvironment } from "../service/java_container_service";
 import { checkInstanceAdvancedParams, getAppMarketList } from "../service/instance_service";
 import { getOperationLoggerOperator, operationLogger } from "../service/operation_logger";
 import { getUserPermission, getUserUuid } from "../service/passport_service";
@@ -558,6 +559,50 @@ router.post(
         role: getUserPermission(ctx) // Permission check is performed in the daemon
       });
       ctx.body = result;
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// [Low-level Permission]
+// List the Java environments (names and majors only) available to a Docker Java instance
+router.get(
+  "/java_container",
+  permission({ level: ROLE.USER }),
+  validator({ query: { daemonId: String, uuid: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      ctx.body = await listJavaEnvironments(daemonId, instanceUuid);
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// [Low-level Permission]
+// Switch a Docker Java instance to a Java environment by name.
+// Only "key" is read from the body; it is resolved server-side against the node's local images.
+router.put(
+  "/java_container",
+  speedLimit(3),
+  permission({ level: ROLE.USER }),
+  validator({ query: { daemonId: String, uuid: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      const key = ctx.request.body?.key;
+      const { remoteService, image } = await resolveJavaEnvironment(daemonId, instanceUuid, key);
+      await updateInstanceWithAudit(ctx, daemonId, instanceUuid, () =>
+        new RemoteRequest(remoteService).request("instance/update", {
+          instanceUuid,
+          config: { docker: { image } }
+        })
+      );
+      ctx.body = true;
     } catch (err) {
       ctx.body = err;
     }

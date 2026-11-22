@@ -32,6 +32,34 @@ export const TYPE_HYTALE = "hytale";
 export const TYPE_STEAM_SERVER_UNIVERSAL = "steam/universal";
 export const TYPE_TERRARIA = "steam/terraria";
 
+// Minecraft server types: Java, Bedrock and MCDR
+export function isMinecraftInstanceType(type?: string | null) {
+  if (!type) return false;
+  return (
+    type.startsWith(TYPE_MINECRAFT_JAVA) ||
+    type.startsWith(TYPE_MINECRAFT_BEDROCK) ||
+    type === TYPE_MINECRAFT_MCDR
+  );
+}
+
+// Minecraft types that run on the JVM: minecraft/java, minecraft/java/* and Nukkit
+export function isJavaFamilyMinecraftType(type?: string | null) {
+  if (!type) return false;
+  return (
+    type === TYPE_MINECRAFT_JAVA ||
+    type.startsWith(`${TYPE_MINECRAFT_JAVA}/`) ||
+    type === TYPE_MINECRAFT_NUKKIT
+  );
+}
+
+// Mirrors the panel rule (panel/src/app/service/java_container_service.ts); the panel is the authority
+export function isJavaContainerEligible(
+  config?: { type?: string | null; processType?: string | null } | null
+) {
+  if (!config) return false;
+  return config.processType === "docker" && isJavaFamilyMinecraftType(config.type);
+}
+
 export const INSTANCE_TYPE_TRANSLATION: MapData<string> = {
   [TYPE_UNIVERSAL]: t("TXT_CODE_a92a4aa1"),
   [TYPE_STEAM_SERVER_UNIVERSAL]: t("TXT_CODE_3d7fbe30"),

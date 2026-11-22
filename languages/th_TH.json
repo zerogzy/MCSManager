@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "อัปโหลดไฟล์ zip ของโปรแกรม",
   "TXT_CODE_market.deployWithDockerImage": "ปรับใช้ด้วยอิมเมจ Docker",
   "TXT_CODE_market.noFilesRequired": "ไม่ต้องใช้ไฟล์",
-  "TXT_CODE_instance.uploadFilesLater": "คุณสามารถอัปโหลดไฟล์ที่จำเป็นสำหรับการรันโปรแกรมได้ในภายหลังผ่านการจัดการไฟล์"
+  "TXT_CODE_instance.uploadFilesLater": "คุณสามารถอัปโหลดไฟล์ที่จำเป็นสำหรับการรันโปรแกรมได้ในภายหลังผ่านการจัดการไฟล์",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "อินสแตนซ์นี้ไม่รองรับการสลับคอนเทนเนอร์ Java",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "สภาพแวดล้อม Java ไม่ถูกต้อง",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "สภาพแวดล้อม Java นี้ไม่มีในโหนด",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "สภาพแวดล้อม Java ปัจจุบัน",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "ปัจจุบัน",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "อิมเมจแบบกำหนดเอง",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "สลับ",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "อินสแตนซ์กำลังทำงานอยู่ การเปลี่ยนแปลงจะมีผลหลังจากรีสตาร์ท"
 }
