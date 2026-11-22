@@ -24,6 +24,7 @@ const SUITES = [
   "security_files",
   "security_sso_redirect",
   "security_auth",
+  "java_container",
   "docker"
 ];
 

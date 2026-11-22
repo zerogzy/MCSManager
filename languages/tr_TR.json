@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "Program zip dosyasını yükle",
   "TXT_CODE_market.deployWithDockerImage": "Docker imajıyla dağıt",
   "TXT_CODE_market.noFilesRequired": "Dosya gerekmez",
-  "TXT_CODE_instance.uploadFilesLater": "Programı çalıştırmak için gereken dosyaları daha sonra Dosya Yönetimi aracılığıyla yükleyebilirsiniz."
+  "TXT_CODE_instance.uploadFilesLater": "Programı çalıştırmak için gereken dosyaları daha sonra Dosya Yönetimi aracılığıyla yükleyebilirsiniz.",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "Bu örnek Java konteyneri değiştirmeyi desteklemiyor",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "Geçersiz Java ortamı",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "Bu Java ortamı düğümde mevcut değil",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "Geçerli Java ortamı",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "Geçerli",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "Özel imaj",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "Değiştir",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "Örnek çalışıyor. Değişiklik yeniden başlatmadan sonra geçerli olur."
 }

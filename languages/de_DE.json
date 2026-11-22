@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "Programm-ZIP-Datei hochladen",
   "TXT_CODE_market.deployWithDockerImage": "Mit Docker-Image bereitstellen",
   "TXT_CODE_market.noFilesRequired": "Keine Dateien erforderlich",
-  "TXT_CODE_instance.uploadFilesLater": "Sie können die zum Ausführen des Programms erforderlichen Dateien später über die Dateiverwaltung hochladen."
+  "TXT_CODE_instance.uploadFilesLater": "Sie können die zum Ausführen des Programms erforderlichen Dateien später über die Dateiverwaltung hochladen.",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "Diese Instanz unterstützt keinen Wechsel des Java-Containers",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "Ungültige Java-Umgebung",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "Diese Java-Umgebung ist auf dem Knoten nicht verfügbar",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "Aktuelle Java-Umgebung",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "Aktuell",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "Benutzerdefiniertes Image",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "Wechseln",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "Die Instanz läuft. Die Änderung wird nach einem Neustart wirksam."
 }

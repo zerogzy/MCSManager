@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "프로그램 zip 파일 업로드",
   "TXT_CODE_market.deployWithDockerImage": "Docker 이미지로 배포",
   "TXT_CODE_market.noFilesRequired": "파일 필요 없음",
-  "TXT_CODE_instance.uploadFilesLater": "프로그램 실행에 필요한 파일은 나중에 파일 관리를 통해 업로드할 수 있습니다."
+  "TXT_CODE_instance.uploadFilesLater": "프로그램 실행에 필요한 파일은 나중에 파일 관리를 통해 업로드할 수 있습니다.",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "이 인스턴스는 Java 컨테이너 전환을 지원하지 않습니다",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "잘못된 Java 환경입니다",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "이 Java 환경은 노드에서 사용할 수 없습니다",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "현재 Java 환경",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "현재",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "사용자 지정 이미지",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "전환",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "인스턴스가 실행 중입니다. 변경 사항은 재시작 후 적용됩니다."
 }

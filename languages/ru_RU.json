@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "Загрузить zip-файл программы",
   "TXT_CODE_market.deployWithDockerImage": "Развернуть с образом Docker",
   "TXT_CODE_market.noFilesRequired": "Файлы не требуются",
-  "TXT_CODE_instance.uploadFilesLater": "Вы можете позже загрузить необходимые для запуска программы файлы через управление файлами."
+  "TXT_CODE_instance.uploadFilesLater": "Вы можете позже загрузить необходимые для запуска программы файлы через управление файлами.",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "Этот экземпляр не поддерживает переключение Java-контейнера",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "Недопустимая среда Java",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "Эта среда Java недоступна на узле",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "Текущая среда Java",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "Текущая",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "Пользовательский образ",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "Переключить",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "Экземпляр запущен. Изменение вступит в силу после перезапуска."
 }

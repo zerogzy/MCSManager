@@ -3283,5 +3283,14 @@
   "TXT_CODE_market.uploadProgramZip": "Upload program zip file",
   "TXT_CODE_market.deployWithDockerImage": "Deploy with Docker image",
   "TXT_CODE_market.noFilesRequired": "No files required",
-  "TXT_CODE_instance.uploadFilesLater": "You can upload the files required to run the program later through File Management."
+  "TXT_CODE_instance.uploadFilesLater": "You can upload the files required to run the program later through File Management.",
+  "TXT_CODE_JAVA_CONTAINER_NOT_SUPPORTED": "This instance does not support Java container switching",
+  "TXT_CODE_JAVA_CONTAINER_INVALID_KEY": "Invalid Java environment",
+  "TXT_CODE_JAVA_CONTAINER_NOT_FOUND": "This Java environment is not available on the node",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT": "Current Java environment",
+  "TXT_CODE_JAVA_CONTAINER_CURRENT_TAG": "Current",
+  "TXT_CODE_JAVA_CONTAINER_CUSTOM_IMAGE": "Custom image",
+  "TXT_CODE_JAVA_CONTAINER_VERSION": "Java {version}",
+  "TXT_CODE_JAVA_CONTAINER_SWITCH": "Switch",
+  "TXT_CODE_JAVA_CONTAINER_RUNNING_TIP": "The instance is running. The change takes effect after a restart."
 }
